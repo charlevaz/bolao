@@ -1,4 +1,4 @@
-import React from 'react';
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -18,7 +18,7 @@ export default function Home() {
       </p>
 
       <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column', width: '100%', maxWidth: '300px' }}>
-        <button style={{ 
+        <Link href="/login" style={{ 
           backgroundColor: '#2C67EA', 
           color: '#FFFFFF', 
           border: 'none', 
@@ -27,11 +27,13 @@ export default function Home() {
           fontSize: '1.1rem', 
           fontWeight: 'bold', 
           cursor: 'pointer',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          textAlign: 'center',
+          textDecoration: 'none'
         }}>
           Entrar / Cadastrar
-        </button>
-        <button style={{ 
+        </Link>
+        <Link href="/regras" style={{ 
           backgroundColor: 'transparent', 
           color: '#FFFFFF', 
           border: '2px solid #2C67EA', 
@@ -39,10 +41,16 @@ export default function Home() {
           borderRadius: '8px', 
           fontSize: '1.1rem', 
           fontWeight: 'bold', 
-          cursor: 'pointer'
+          cursor: 'pointer',
+          textAlign: 'center',
+          textDecoration: 'none'
         }}>
           Ver Regras e Prêmios
-        </button>
+        </Link>
+      </div>
+
+      <div style={{ marginTop: '4rem' }}>
+        <Link href="/admin" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', textDecoration: 'none' }}>Acesso Restrito</Link>
       </div>
 
     </div>
