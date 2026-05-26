@@ -32,33 +32,108 @@ export default function AdminPanel() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
 
+  // Ranking Admin State
+  const [ranking, setRanking] = useState<any[]>([]);
+  const [rankingFilter, setRankingFilter] = useState('entregador');
+
   const supabase = createClient();
 
   useEffect(() => {
-    async function checkAdmin() {
+    async function loadAdminData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setChecking(false);
+        window.location.href = '/login';
+        return;
+      }
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (!profile || profile.role !== 'admin') {
+        window.location.href = '/dashboard';
         return;
       }
       
-      const { data } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-        
-      if (data?.role === 'admin') {
-        setIsAdmin(true);
-        loadMatches();
-        loadEmails();
-        loadProfiles();
-        loadTranslations();
-      }
-      setChecking(false);
+      loadEmails();
+      loadMatches();
+      loadTranslations();
+      loadRanking();
     }
-    checkAdmin();
+    loadAdminData();
   }, []);
+
+  const loadRanking = async () => {
+    // Busca todos os palpites que ganharam pontos (jogos já finalizados) e os perfis
+    const { data: guessesData } = await supabase
+      .from('guesses')
+      .select('points_earned, guess_score_a, guess_score_b, user_id, profiles(name, email, user_group)')
+      .gt('points_earned', 0); // Opcional: ou puxar todos
+      
+    const { data: profilesData } = await supabase.from('profiles').select('id, name, email, user_group, points');
+    
+    if (profilesData) {
+      const statsMap: any = {};
+      profilesData.forEach((p: any) => {
+        statsMap[p.id] = {
+          id: p.id,
+          name: p.name,
+          email: p.email,
+          user_group: p.user_group,
+          points: 0,
+          exact: 0,
+          winner: 0,
+          tie: 0,
+          single_goal: 0
+        };
+      });
+
+      if (guessesData) {
+        guessesData.forEach((g: any) => {
+          if (statsMap[g.user_id]) {
+            statsMap[g.user_id].points += g.points_earned;
+            if (g.points_earned === 10) statsMap[g.user_id].exact++;
+            else if (g.points_earned === 3) {
+              if (g.guess_score_a === g.guess_score_b) statsMap[g.user_id].tie++;
+              else statsMap[g.user_id].winner++;
+            }
+            else if (g.points_earned === 1) statsMap[g.user_id].single_goal++;
+          }
+        });
+      }
+
+      const sortedRanking = Object.values(statsMap).sort((a: any, b: any) => b.points - a.points);
+      setRanking(sortedRanking);
+    }
+  };
+
+  const handleDownloadRanking = () => {
+    const filteredRanking = ranking.filter(r => r.user_group === rankingFilter).slice(0, 50);
+    
+    if (filteredRanking.length === 0) {
+      alert("Nenhum dado para exportar.");
+      return;
+    }
+
+    const headers = ["Posição", "Nome", "E-mail", "Grupo", "Pontos Totais", "Placares Exatos (+10)", "Vencedores Acertados (+3)", "Empates Acertados (+3)", "Gols Isolados (+1)"];
+    const rows = filteredRanking.map((r, index) => [
+      index + 1,
+      `"${r.name}"`,
+      `"${r.email}"`,
+      `"${r.user_group}"`,
+      r.points,
+      r.exact,
+      r.winner,
+      r.tie,
+      r.single_goal
+    ]);
+
+    const csvContent = [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `top_50_ranking_${rankingFilter}_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const loadTranslations = async () => {
     let { data } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
@@ -518,6 +593,63 @@ export default function AdminPanel() {
                   <td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
                     Nenhuma seleção encontrada. Sincronize a tabela de jogos para preencher automaticamente.
                   </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* SEÇÃO TOP 50 RANKING DETALHADO */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h2 style={{ fontSize: '1.5rem', margin: 0, color: '#0F1849' }}>🏆 Top 50 Ranking Detalhado</h2>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <select 
+              value={rankingFilter} 
+              onChange={e => setRankingFilter(e.target.value)} 
+              style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}
+            >
+              <option value="entregador">Entregadores</option>
+              <option value="colaborador">Colaboradores Internos</option>
+            </select>
+            <button 
+              onClick={handleDownloadRanking}
+              style={{ padding: '0.6rem 1.2rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              📊 Exportar Ranking (Excel)
+            </button>
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', fontSize: '0.85rem' }}>
+                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>Pos</th>
+                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>Nome</th>
+                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>Pontos Totais</th>
+                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Placar Exato (+10)</th>
+                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Vencedor (+3)</th>
+                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Empate (+3)</th>
+                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Gol Isolado (+1)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranking.filter(r => r.user_group === rankingFilter).slice(0, 50).map((r, index) => (
+                <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <td style={{ padding: '1rem', fontWeight: 'bold', color: index < 3 ? '#eab308' : '#333' }}>{index + 1}º</td>
+                  <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0F1849' }}>{r.name}<br/><span style={{fontSize: '0.75rem', color: '#888', fontWeight: 'normal'}}>{r.email}</span></td>
+                  <td style={{ padding: '1rem', fontSize: '1.2rem', fontWeight: '900', color: '#2C67EA' }}>{r.points}</td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.exact}</td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.winner}</td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.tie}</td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.single_goal}</td>
+                </tr>
+              ))}
+              {ranking.filter(r => r.user_group === rankingFilter).length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Ninguém deste grupo pontuou ainda.</td>
                 </tr>
               )}
             </tbody>
