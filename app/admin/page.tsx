@@ -10,6 +10,7 @@ export default function AdminPanel() {
   const [group, setGroup] = useState('entregador');
   const [message, setMessage] = useState('');
   const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
   
   // CSV Upload State
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -50,11 +51,29 @@ export default function AdminPanel() {
         setIsAdmin(true);
         loadMatches();
         loadEmails();
+        loadProfiles();
       }
       setChecking(false);
     }
     checkAdmin();
   }, []);
+
+  const loadProfiles = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('points', { ascending: false });
+    if (data) setProfiles(data);
+  };
+
+  const handleToggleAdmin = async (id: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    const confirmed = window.confirm(`Deseja alterar o usuário para ${newRole}?`);
+    if (!confirmed) return;
+
+    await supabase.from('profiles').update({ role: newRole }).eq('id', id);
+    loadProfiles();
+  };
 
   const loadMatches = async () => {
     const { data } = await supabase
@@ -374,6 +393,40 @@ export default function AdminPanel() {
               <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir">🗑️</button>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* SEÇÃO USUÁRIOS E PERMISSÕES */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginTop: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👑 Gestão de Usuários (Tornar Admin)</h2>
+        
+        <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
+          {profiles.map(user => (
+            <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #eee', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0F1849' }}>
+                  {user.name} {user.role === 'admin' && <span style={{ fontSize: '0.7rem', backgroundColor: '#eab308', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Admin</span>}
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email || 'Usuário'}</span>
+              </div>
+              <button 
+                onClick={() => handleToggleAdmin(user.id, user.role)} 
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontWeight: 'bold',
+                  fontSize: '0.8rem'
+                }}
+              >
+                {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+              </button>
+            </div>
+          ))}
+          {profiles.length === 0 && <p style={{ padding: '1rem', color: '#888' }}>Nenhum usuário cadastrado ainda.</p>}
         </div>
       </div>
     </div>

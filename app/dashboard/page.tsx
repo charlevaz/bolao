@@ -286,7 +286,7 @@ export default function Dashboard() {
 
                     {/* INFO DO JOGO */}
                     <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#0F1849', fontSize: '0.85rem' }}>
-                      <span style={{ fontWeight: '900' }}>{match.group_name || 'Fase Final'}</span> • {match.venue || 'Estádio A Definir'}
+                      <span style={{ fontWeight: '900' }}>{match.group_name || 'Fase Final'}</span> • {new Date(match.match_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} • {match.venue || 'Estádio A Definir'}
                     </div>
 
                     {/* PLACARES */}
