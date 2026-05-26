@@ -222,6 +222,61 @@ export default function AdminPanel() {
     loadMatches();
   };
 
+  const handleDownloadAudit = async () => {
+    setMatchMessage('Gerando planilha de auditoria...');
+    try {
+      const { data, error } = await supabase
+        .from('guesses')
+        .select(`
+          guess_score_a,
+          guess_score_b,
+          points_earned,
+          created_at,
+          profiles (name, email),
+          matches (team_a, team_b, match_date, score_a, score_b)
+        `);
+      
+      if (error) {
+        setMatchMessage(`Erro ao baixar: ${error.message}`);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        setMatchMessage('Nenhum palpite foi feito ainda.');
+        return;
+      }
+
+      const headers = ["Nome", "E-mail", "Data do Jogo", "Jogo", "Palpite A", "Palpite B", "Placar Real", "Pontos Ganhos", "Data e Hora do Palpite"];
+      const rows = data.map((g: any) => [
+        `"${g.profiles?.name || 'Desconhecido'}"`,
+        `"${g.profiles?.email || ''}"`,
+        `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR') : ''}"`,
+        `"${g.matches?.team_a} x ${g.matches?.team_b}"`,
+        g.guess_score_a,
+        g.guess_score_b,
+        g.matches?.score_a !== null ? `"${g.matches?.score_a} x ${g.matches?.score_b}"` : '"Pendente"',
+        g.points_earned,
+        `"${new Date(g.created_at).toLocaleString('pt-BR')}"`
+      ]);
+
+      const csvContent = [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
+      
+      // Criar o arquivo e baixar automaticamente (bom suporte para Excel em português)
+      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `auditoria_palpites_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setMatchMessage('Planilha gerada com sucesso!');
+    } catch (err: any) {
+      setMatchMessage(`Erro na exportação: ${err.message}`);
+    }
+  };
+
   const handleSyncApi = async () => {
     const confirmed = window.confirm("Isso vai buscar todos os 104 jogos oficiais da Copa do Mundo 2026. Continuar?");
     if (!confirmed) return;
@@ -474,6 +529,9 @@ export default function AdminPanel() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h2 style={{ fontSize: '1.5rem', color: '#0F1849', margin: 0 }}>⚽ Gestão de Jogos</h2>
           <div style={{ display: 'flex', gap: '1rem' }}>
+            <button onClick={handleDownloadAudit} style={{ padding: '0.6rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+              📊 Auditoria
+            </button>
             <button onClick={handleSyncApi} style={{ padding: '0.6rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
               🔄 Tabela 2026 Completa
             </button>
