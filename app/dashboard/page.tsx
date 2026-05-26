@@ -21,6 +21,10 @@ export default function Dashboard() {
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [uniqueDays, setUniqueDays] = useState<{date: string, label: string, short: string}[]>([]);
 
+  // Atualização de Nome
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [newName, setNewName] = useState('');
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -39,6 +43,11 @@ export default function Dashboard() {
         .single();
       
       setProfile(profileData);
+      
+      // Verifica se o nome ainda é igual a parte antes do @ no e-mail
+      if (profileData && profileData.name === profileData.email.split('@')[0]) {
+        setShowNameModal(true);
+      }
 
       // 2. Carregar Ranking (Top 10 do mesmo grupo)
       if (profileData) {
@@ -109,6 +118,15 @@ export default function Dashboard() {
     }
     loadDashboard();
   }, []);
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !profile) return;
+    
+    await supabase.from('profiles').update({ name: newName.trim() }).eq('id', profile.id);
+    setProfile({...profile, name: newName.trim()});
+    setShowNameModal(false);
+  };
 
   const handleScoreChange = (matchId: string, team: 'a'|'b', delta: number) => {
     setInputScores(prev => {
@@ -196,6 +214,28 @@ export default function Dashboard() {
   return (
     <div style={{ backgroundColor: '#f0f4f8', minHeight: '100vh', color: '#333', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       
+      {showNameModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <h2 style={{ color: '#0F1849', marginTop: 0, marginBottom: '1rem' }}>Como devemos te chamar?</h2>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Para que os outros participantes te reconheçam no ranking, informe o seu nome completo ou apelido.</p>
+            <form onSubmit={handleSaveName} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input 
+                type="text" 
+                placeholder="Seu nome" 
+                value={newName} 
+                onChange={(e) => setNewName(e.target.value)} 
+                required 
+                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem' }}
+              />
+              <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+                Salvar Nome
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* HEADER TOP */}
       <header style={{ backgroundColor: '#0F1849', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

@@ -271,6 +271,84 @@ export default function AdminPanel() {
       
       <h1 style={{ fontSize: '2rem', marginBottom: '2rem', color: '#fff' }}>Painel do Administrador</h1>
       
+      {/* SEÇÃO USUÁRIOS E PERMISSÕES */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👑 Gestão de Usuários (Tornar Admin)</h2>
+        
+        <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
+          {profiles.map(user => (
+            <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #eee', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0F1849' }}>
+                  {user.name} {user.role === 'admin' && <span style={{ fontSize: '0.7rem', backgroundColor: '#eab308', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Admin</span>}
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email || 'Usuário'}</span>
+              </div>
+              <button 
+                onClick={() => handleToggleAdmin(user.id, user.role)} 
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontWeight: 'bold',
+                  fontSize: '0.8rem'
+                }}
+              >
+                {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+              </button>
+            </div>
+          ))}
+          {profiles.length === 0 && <p style={{ padding: '1rem', color: '#888' }}>Nenhum usuário cadastrado ainda.</p>}
+        </div>
+      </div>
+
+      {/* SEÇÃO E-MAILS */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👥 Cadastro de Participantes</h2>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Adicionar E-mail</h3>
+            <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <input type="email" placeholder="E-mail" value={emailToAdd} onChange={(e) => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+              <select value={group} onChange={(e) => setGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <option value="entregador">Entregador</option>
+                <option value="colaborador">Colaborador</option>
+              </select>
+              <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar Individual</button>
+            </form>
+            {message && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{message}</div>}
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Subir CSV</h3>
+            <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
+              <button type="submit" disabled={!csvFile} style={{ padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: 'white', border: 'none', borderRadius: '6px', cursor: csvFile ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}>
+                Enviar Planilha
+              </button>
+            </form>
+            {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
+          </div>
+        </div>
+
+        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>E-mails Autorizados ({allowedEmails.length})</h3>
+        <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
+          {allowedEmails.map(item => (
+            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #eee' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.email}</span>
+                <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase' }}>{item.user_group}</span>
+              </div>
+              <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir">🗑️</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* SEÇÃO JOGOS */}
       <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -349,84 +427,6 @@ export default function AdminPanel() {
             ))}
             {matches.length === 0 && <p style={{ color: '#888', fontSize: '0.9rem' }}>Nenhum jogo na lista.</p>}
           </div>
-        </div>
-      </div>
-
-      {/* SEÇÃO E-MAILS */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👥 Cadastro de Participantes</h2>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Adicionar E-mail</h3>
-            <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <input type="email" placeholder="E-mail" value={emailToAdd} onChange={(e) => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-              <select value={group} onChange={(e) => setGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <option value="entregador">Entregador</option>
-                <option value="colaborador">Colaborador</option>
-              </select>
-              <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar Individual</button>
-            </form>
-            {message && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{message}</div>}
-          </div>
-
-          <div>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Subir CSV</h3>
-            <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files ? e.target.files[0] : null)} required style={{ padding: '0.5rem' }} />
-              <button type="submit" disabled={!csvFile} style={{ padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: 'white', border: 'none', borderRadius: '6px', cursor: csvFile ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}>
-                Enviar Planilha
-              </button>
-            </form>
-            {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
-          </div>
-        </div>
-
-        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>E-mails Autorizados ({allowedEmails.length})</h3>
-        <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
-          {allowedEmails.map(item => (
-            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #eee' }}>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.email}</span>
-                <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase' }}>{item.user_group}</span>
-              </div>
-              <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir">🗑️</button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* SEÇÃO USUÁRIOS E PERMISSÕES */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginTop: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👑 Gestão de Usuários (Tornar Admin)</h2>
-        
-        <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
-          {profiles.map(user => (
-            <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #eee', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0F1849' }}>
-                  {user.name} {user.role === 'admin' && <span style={{ fontSize: '0.7rem', backgroundColor: '#eab308', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Admin</span>}
-                </span>
-                <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email || 'Usuário'}</span>
-              </div>
-              <button 
-                onClick={() => handleToggleAdmin(user.id, user.role)} 
-                style={{ 
-                  padding: '0.5rem 1rem', 
-                  backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontWeight: 'bold',
-                  fontSize: '0.8rem'
-                }}
-              >
-                {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
-              </button>
-            </div>
-          ))}
-          {profiles.length === 0 && <p style={{ padding: '1rem', color: '#888' }}>Nenhum usuário cadastrado ainda.</p>}
         </div>
       </div>
     </div>
