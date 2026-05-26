@@ -1,157 +1,100 @@
 "use client";
 
-import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-
   const supabase = createClient();
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
 
-  const handleAction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
+  useEffect(() => {
+    // Escutar mudanças de autenticação (quando o usuário loga com sucesso)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        router.push('/');
+      }
+    });
 
-    if (isLogin) {
-      // FLUXO DE ENTRAR (LOGIN)
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setMessage(`Erro ao entrar: ${error.message}. Verifique seu e-mail e senha.`);
-        setLoading(false);
+    // Checar se já está logado inicialmente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push('/');
       } else {
-        window.location.href = '/'; // Redireciona para a home
+        setChecking(false);
       }
-      
-    } else {
-      // FLUXO DE CADASTRAR (SIGNUP)
-      // 1. Verificar se o e-mail está autorizado pelo Admin
-      const { data: allowedData, error: allowedError } = await supabase
-        .from('allowed_emails')
-        .select('user_group')
-        .eq('email', email)
-        .single();
+    });
 
-      if (allowedError || !allowedData) {
-        setMessage('Desculpe, este E-mail não está autorizado pelo Administrador.');
-        setLoading(false);
-        return;
-      }
+    return () => subscription.unsubscribe();
+  }, [router, supabase.auth]);
 
-      // 2. Criar a conta de autenticação
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (authError) {
-        setMessage(`Erro no cadastro: ${authError.message}`);
-        setLoading(false);
-        return;
-      }
-
-      // 3. Criar o Perfil do usuário (já que agora ele tem um auth.user.id)
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email: email,
-            name: name,
-            user_group: allowedData.user_group,
-            role: 'user'
-          });
-        
-        if (profileError && profileError.code !== '23505') { // ignora erro se já existir
-          setMessage(`Conta criada, mas houve um erro ao criar o perfil: ${profileError.message}`);
-        } else {
-          setMessage('Cadastro realizado com sucesso! Você já pode participar do bolão.');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1500);
-        }
-      }
-      setLoading(false);
-    }
-  };
+  if (checking) return <div style={{ padding: '4rem', textAlign: 'center' }}>Carregando...</div>;
 
   return (
     <div style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       
-      <Link href="/" style={{ color: '#2C67EA', marginBottom: '2rem' }}>← Voltar</Link>
+      <Link href="/" style={{ color: '#2C67EA', marginBottom: '2rem' }}>← Voltar para Home</Link>
 
-      <h1 style={{ fontSize: '2rem', marginBottom: '1rem', textAlign: 'center' }}>
-        {isLogin ? 'Entrar no Bolão' : 'Criar Nova Senha'}
-      </h1>
-      <p style={{ marginBottom: '2rem', textAlign: 'center', opacity: 0.8, maxWidth: '400px' }}>
-        {isLogin 
-          ? 'Insira seu e-mail e senha cadastrados.' 
-          : 'Seu e-mail já deve ter sido autorizado pela Gestão para você conseguir criar sua senha.'}
-      </p>
-      
-      <form onSubmit={handleAction} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '300px' }}>
-        {!isLogin && (
-          <input 
-            type="text" 
-            placeholder="Seu Nome e Sobrenome" 
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            style={{ padding: '1rem', borderRadius: '8px', border: 'none', color: '#333', fontSize: '1rem', outline: 'none' }}
-          />
-        )}
+      <div style={{ width: '100%', maxWidth: '400px', backgroundColor: 'white', padding: '2rem', borderRadius: '8px', color: '#333', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
         
-        <input 
-          type="email" 
-          placeholder="E-mail" 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ padding: '1rem', borderRadius: '8px', border: 'none', color: '#333', fontSize: '1rem', outline: 'none' }}
+        <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem', textAlign: 'center', color: '#0F1849' }}>
+          Identificação VIP
+        </h1>
+        <p style={{ textAlign: 'center', fontSize: '0.9rem', marginBottom: '2rem', color: '#666' }}>
+          Seu e-mail deve estar autorizado pela gestão para você conseguir criar sua conta.
+        </p>
+
+        <Auth
+          supabaseClient={supabase}
+          appearance={{
+            theme: ThemeSupa,
+            variables: {
+              default: {
+                colors: {
+                  brand: '#2C67EA',
+                  brandAccent: '#1a4bb3',
+                  messageText: '#ff4444',
+                }
+              }
+            }
+          }}
+          localization={{
+            variables: {
+              sign_in: {
+                email_label: 'E-mail',
+                password_label: 'Senha',
+                button_label: 'Entrar',
+                loading_button_label: 'Entrando...',
+                email_input_placeholder: 'Seu e-mail',
+                password_input_placeholder: 'Sua senha',
+                link_text: 'Já tem uma conta? Faça Login'
+              },
+              sign_up: {
+                email_label: 'E-mail Corporativo',
+                password_label: 'Crie uma Senha Forte',
+                button_label: 'Cadastrar',
+                loading_button_label: 'Cadastrando...',
+                email_input_placeholder: 'Seu e-mail',
+                password_input_placeholder: 'Sua senha',
+                link_text: 'Não tem uma senha? Crie sua conta'
+              },
+              forgotten_password: {
+                link_text: 'Esqueceu sua senha?',
+                button_label: 'Recuperar Senha',
+                password_label: 'Sua Senha',
+                email_label: 'E-mail'
+              }
+            }
+          }}
+          theme="light"
+          providers={[]} // Desabilitar logins de terceiros (Google/Facebook)
         />
 
-        <input 
-          type="password" 
-          placeholder="Senha" 
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ padding: '1rem', borderRadius: '8px', border: 'none', color: '#333', fontSize: '1rem', outline: 'none' }}
-        />
-        
-        <button 
-          type="submit" 
-          disabled={loading}
-          style={{ padding: '1rem', backgroundColor: '#2C67EA', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', marginTop: '0.5rem' }}
-        >
-          {loading ? 'Aguarde...' : (isLogin ? 'Entrar' : 'Cadastrar e Entrar')}
-        </button>
-      </form>
-
-      <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-        <button 
-          onClick={() => { setIsLogin(!isLogin); setMessage(''); }}
-          style={{ background: 'none', border: 'none', color: '#2C67EA', cursor: 'pointer', textDecoration: 'underline' }}
-        >
-          {isLogin ? 'Ainda não tem senha? Cadastre-se aqui' : 'Já tem uma senha? Faça login'}
-        </button>
       </div>
-
-      {message && (
-        <div style={{ marginTop: '2rem', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.1)', padding: '1rem', borderRadius: '8px', maxWidth: '400px', lineHeight: '1.5' }}>
-          {message}
-        </div>
-      )}
     </div>
   );
 }
