@@ -89,12 +89,13 @@ export default function Dashboard() {
         
         matchesData.forEach(m => {
           const d = new Date(m.match_date);
-          const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
-          if (!daysMap.has(dateStr)) {
-            daysMap.set(dateStr, true);
+          // Usar data LOCAL para evitar duplicatas por fuso UTC
+          const localDateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          if (!daysMap.has(localDateStr)) {
+            daysMap.set(localDateStr, true);
             const diasSemana = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
             daysFormat.push({
-              date: dateStr,
+              date: localDateStr,
               label: `${d.getDate()} ${d.toLocaleString('pt-BR', {month: 'short'}).toUpperCase()}`,
               short: diasSemana[d.getDay()]
             });
@@ -224,7 +225,11 @@ export default function Dashboard() {
     return <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#0F1849' }}>Carregando sua área...</div>;
   }
 
-  const filteredMatches = matches.filter(m => m.match_date.startsWith(selectedDay));
+  const filteredMatches = matches.filter(m => {
+    const d = new Date(m.match_date);
+    const localDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return localDate === selectedDay;
+  });
   const progressPercent = matches.length > 0 ? Math.round((guesses.length / matches.length) * 100) : 0;
 
   return (
@@ -317,7 +322,10 @@ export default function Dashboard() {
           </div>
           <div>
             <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>{profile?.name}</h1>
-            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>{profile?.points} pts • {profile?.exact_scores} Placares Exatos</p>
+            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
+              {profile?.points} pts • {profile?.exact_scores} Placares Exatos
+              {rankPos && <span style={{ marginLeft: '0.5rem', backgroundColor: '#eab308', color: '#000', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold' }}>🏅 {rankPos}º lugar</span>}
+            </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

@@ -4,231 +4,106 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 
+const TABS = ['ranking', 'usuarios', 'emails', 'dicionario', 'jogos', 'fases'] as const;
+type Tab = typeof TABS[number];
+
+const TAB_LABELS: Record<Tab, string> = {
+  ranking:    '🏆 Ranking',
+  usuarios:   '👑 Usuários',
+  emails:     '📧 Participantes',
+  dicionario: '🌍 Dicionário',
+  jogos:      '⚽ Jogos',
+  fases:      '🔓 Fases',
+};
+
+const PHASES = [
+  { key: 'group', label: 'Fase de Grupos' },
+  { key: 'round_of_32', label: 'Oitavas de Final' },
+  { key: 'round_of_16', label: 'Quartas de Final' },
+  { key: 'quarter', label: 'Semifinais' },
+  { key: 'semi', label: 'Final e 3º Lugar' },
+  { key: 'final', label: 'Grande Final' },
+];
+
 export default function AdminPanel() {
-  // Emails State
+  const [activeTab, setActiveTab] = useState<Tab>('ranking');
+
+  // Auth
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  // Emails
   const [emailToAdd, setEmailToAdd] = useState('');
-  const [group, setGroup] = useState('entregador');
-  const [message, setMessage] = useState('');
+  const [emailGroup, setEmailGroup] = useState('entregador');
+  const [emailMessage, setEmailMessage] = useState('');
   const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [translations, setTranslations] = useState<any[]>([]);
-  
-  // CSV Upload State
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvMessage, setCsvMessage] = useState('');
-  
-  // Match Management State
+
+  // Users (profiles)
+  const [profiles, setProfiles] = useState<any[]>([]);
+
+  // Dictionary
+  const [translations, setTranslations] = useState<any[]>([]);
+
+  // Ranking
+  const [ranking, setRanking] = useState<any[]>([]);
+  const [rankingFilter, setRankingFilter] = useState('entregador');
+
+  // Matches
+  const [matches, setMatches] = useState<any[]>([]);
+  const [scores, setScores] = useState<{[key: string]: {a: string, b: string}}>({});
   const [teamA, setTeamA] = useState('');
   const [teamB, setTeamB] = useState('');
   const [flagA, setFlagA] = useState('un');
   const [flagB, setFlagB] = useState('un');
   const [matchDate, setMatchDate] = useState('');
   const [matchMessage, setMatchMessage] = useState('');
-  
-  // Matches List
-  const [matches, setMatches] = useState<any[]>([]);
-  const [scores, setScores] = useState<{[key: string]: {a: string, b: string}}>({});
 
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checking, setChecking] = useState(true);
-
-  // Ranking Admin State
-  const [ranking, setRanking] = useState<any[]>([]);
-  const [rankingFilter, setRankingFilter] = useState('entregador');
+  // Fases
+  const [openPhases, setOpenPhases] = useState<Record<string, boolean>>({});
+  const [phaseMessage, setPhaseMessage] = useState('');
 
   const supabase = createClient();
 
   useEffect(() => {
     async function loadAdminData() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        window.location.href = '/login';
-        return;
-      }
+      if (!user) { window.location.href = '/login'; return; }
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      if (!profile || profile.role !== 'admin') {
-        window.location.href = '/dashboard';
-        return;
-      }
-      
+      if (!profile || profile.role !== 'admin') { window.location.href = '/dashboard'; return; }
       setIsAdmin(true);
-      loadEmails();
-      loadMatches();
-      loadTranslations();
-      loadRanking();
       setChecking(false);
+      loadAll();
     }
     loadAdminData();
   }, []);
 
-  const loadRanking = async () => {
-    // Busca todos os palpites que ganharam pontos (jogos já finalizados) e os perfis
-    const { data: guessesData } = await supabase
-      .from('guesses')
-      .select('points_earned, guess_score_a, guess_score_b, user_id, profiles(name, email, user_group)')
-      .gt('points_earned', 0); // Opcional: ou puxar todos
-      
-    const { data: profilesData } = await supabase.from('profiles').select('id, name, email, user_group, points');
-    
-    if (profilesData) {
-      const statsMap: any = {};
-      profilesData.forEach((p: any) => {
-        statsMap[p.id] = {
-          id: p.id,
-          name: p.name,
-          email: p.email,
-          user_group: p.user_group,
-          points: 0,
-          exact: 0,
-          winner: 0,
-          tie: 0,
-          single_goal: 0
-        };
-      });
-
-      if (guessesData) {
-        guessesData.forEach((g: any) => {
-          if (statsMap[g.user_id]) {
-            statsMap[g.user_id].points += g.points_earned;
-            if (g.points_earned === 10) statsMap[g.user_id].exact++;
-            else if (g.points_earned === 3) {
-              if (g.guess_score_a === g.guess_score_b) statsMap[g.user_id].tie++;
-              else statsMap[g.user_id].winner++;
-            }
-            else if (g.points_earned === 1) statsMap[g.user_id].single_goal++;
-          }
-        });
-      }
-
-      const sortedRanking = Object.values(statsMap).sort((a: any, b: any) => b.points - a.points);
-      setRanking(sortedRanking);
-    }
-  };
-
-  const handleDownloadRanking = () => {
-    const filteredRanking = ranking.filter(r => r.user_group === rankingFilter).slice(0, 50);
-    
-    if (filteredRanking.length === 0) {
-      alert("Nenhum dado para exportar.");
-      return;
-    }
-
-    const headers = ["Posição", "Nome", "E-mail", "Grupo", "Pontos Totais", "Placares Exatos (+10)", "Vencedores Acertados (+3)", "Empates Acertados (+3)", "Gols Isolados (+1)"];
-    const rows = filteredRanking.map((r, index) => [
-      index + 1,
-      `"${r.name}"`,
-      `"${r.email}"`,
-      `"${r.user_group}"`,
-      r.points,
-      r.exact,
-      r.winner,
-      r.tie,
-      r.single_goal
-    ]);
-
-    const csvContent = [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `top_50_ranking_${rankingFilter}_${new Date().getTime()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const loadTranslations = async () => {
-    let { data } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
-    
-    // Se o dicionário estiver vazio, vamos tentar puxar dos jogos que já estão no banco!
-    if (!data || data.length === 0) {
-      const { data: matchesData } = await supabase.from('matches').select('team_a, team_b');
-      if (matchesData && matchesData.length > 0) {
-        const uniqueTeams = new Set<string>();
-        matchesData.forEach((m: any) => {
-          if (m.team_a) uniqueTeams.add(m.team_a);
-          if (m.team_b) uniqueTeams.add(m.team_b);
-        });
-        
-        const newTranslations = Array.from(uniqueTeams).map(team => ({
-          api_name: team,
-          pt_name: team,
-          flag_code: 'un'
-        }));
-        
-        if (newTranslations.length > 0) {
-          await supabase.from('team_translations').upsert(newTranslations, { onConflict: 'api_name', ignoreDuplicates: true });
-          const { data: newData } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
-          if (newData) data = newData;
-        }
-      }
-    }
-    
-    if (data) setTranslations(data);
-  };
-
-  const loadProfiles = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('points', { ascending: false });
-    if (data) setProfiles(data);
-  };
-
-  const handleToggleAdmin = async (id: string, currentRole: string) => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    const confirmed = window.confirm(`Deseja alterar o usuário para ${newRole}?`);
-    if (!confirmed) return;
-
-    await supabase.from('profiles').update({ role: newRole }).eq('id', id);
+  const loadAll = () => {
+    loadEmails();
     loadProfiles();
+    loadMatches();
+    loadTranslations();
+    loadRanking();
+    loadPhases();
   };
 
-  const loadMatches = async () => {
-    const { data } = await supabase
-      .from('matches')
-      .select('*')
-      .order('match_date', { ascending: true });
-    
-    if (data) {
-      setMatches(data);
-      const initialScores: any = {};
-      data.forEach(m => {
-        initialScores[m.id] = { a: '', b: '' };
-      });
-      setScores(initialScores);
-    }
-  };
-
+  // ── Emails ────────────────────────────────────────────────────────────────
   const loadEmails = async () => {
-    const { data } = await supabase
-      .from('allowed_emails')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.from('allowed_emails').select('*').order('created_at', { ascending: false });
     if (data) setAllowedEmails(data);
   };
 
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('Adicionando...');
-    
-    const { error } = await supabase
-      .from('allowed_emails')
-      .insert([{ email: emailToAdd, user_group: group }]);
-      
-    if (error) {
-      setMessage(`Erro: ${error.message}`);
-    } else {
-      setMessage(`E-mail autorizado com sucesso!`);
-      setEmailToAdd('');
-      loadEmails();
-    }
+    setEmailMessage('Adicionando...');
+    const { error } = await supabase.from('allowed_emails').insert([{ email: emailToAdd, user_group: emailGroup }]);
+    if (error) setEmailMessage(`Erro: ${error.message}`);
+    else { setEmailMessage('E-mail autorizado!'); setEmailToAdd(''); loadEmails(); }
   };
 
   const handleDeleteEmail = async (id: string, email: string) => {
-    const confirmed = window.confirm(`Certeza que deseja remover a autorização de ${email}?`);
-    if (!confirmed) return;
-
+    if (!window.confirm(`Remover autorização de ${email}?`)) return;
     await supabase.from('allowed_emails').delete().eq('id', id);
     loadEmails();
   };
@@ -236,512 +111,532 @@ export default function AdminPanel() {
   const handleCsvUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!csvFile) return;
-
     setCsvMessage('Lendo planilha...');
     const reader = new FileReader();
     reader.onload = async (event) => {
       const text = event.target?.result as string;
-      const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-      
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       const toInsert = lines.map(line => {
         const parts = line.split(',');
         const email = parts[0]?.trim();
-        let userGroup = parts[1]?.trim().toLowerCase();
-        
-        if (userGroup !== 'entregador' && userGroup !== 'colaborador') {
-          userGroup = 'colaborador';
-        }
-
-        return { email, user_group: userGroup };
-      }).filter(item => item.email && item.email.includes('@'));
-
+        let ug = parts[1]?.trim().toLowerCase();
+        if (ug !== 'entregador' && ug !== 'colaborador') ug = 'colaborador';
+        return { email, user_group: ug };
+      }).filter(i => i.email && i.email.includes('@'));
       const { error } = await supabase.from('allowed_emails').insert(toInsert);
-      
-      if (error) {
-        setCsvMessage(`Erro: ${error.message}`);
-      } else {
-        setCsvMessage(`🎉 ${toInsert.length} e-mails cadastrados!`);
-        setCsvFile(null);
-        loadEmails();
-      }
+      if (error) setCsvMessage(`Erro: ${error.message}`);
+      else { setCsvMessage(`🎉 ${toInsert.length} e-mails cadastrados!`); setCsvFile(null); loadEmails(); }
     };
     reader.readAsText(csvFile);
+  };
+
+  // ── Profiles ──────────────────────────────────────────────────────────────
+  const loadProfiles = async () => {
+    const { data } = await supabase.from('profiles').select('*').order('points', { ascending: false });
+    if (data) setProfiles(data);
+  };
+
+  const handleToggleAdmin = async (id: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    if (!window.confirm(`Alterar para ${newRole}?`)) return;
+    await supabase.from('profiles').update({ role: newRole }).eq('id', id);
+    loadProfiles();
+  };
+
+  // ── Translations ──────────────────────────────────────────────────────────
+  const loadTranslations = async () => {
+    let { data } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
+    if (!data || data.length === 0) {
+      const { data: mData } = await supabase.from('matches').select('team_a, team_b');
+      if (mData && mData.length > 0) {
+        const teams = new Set<string>();
+        mData.forEach((m: any) => { if (m.team_a) teams.add(m.team_a); if (m.team_b) teams.add(m.team_b); });
+        const inserts = Array.from(teams).map(t => ({ api_name: t, pt_name: t, flag_code: 'un' }));
+        await supabase.from('team_translations').upsert(inserts, { onConflict: 'api_name', ignoreDuplicates: true });
+        const { data: newData } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
+        if (newData) data = newData;
+      }
+    }
+    if (data) setTranslations(data);
+  };
+
+  // ── Ranking ───────────────────────────────────────────────────────────────
+  const loadRanking = async () => {
+    const { data: guessesData } = await supabase.from('guesses').select('points_earned, guess_score_a, guess_score_b, user_id').not('points_earned', 'is', null);
+    const { data: profilesData } = await supabase.from('profiles').select('id, name, email, user_group');
+    if (!profilesData) return;
+    const statsMap: any = {};
+    profilesData.forEach((p: any) => {
+      statsMap[p.id] = { id: p.id, name: p.name, email: p.email, user_group: p.user_group, points: 0, exact: 0, winner: 0, tie: 0, single_goal: 0 };
+    });
+    if (guessesData) {
+      guessesData.forEach((g: any) => {
+        if (!statsMap[g.user_id] || !g.points_earned) return;
+        statsMap[g.user_id].points += g.points_earned;
+        if (g.points_earned === 10) statsMap[g.user_id].exact++;
+        else if (g.points_earned === 3) {
+          if (g.guess_score_a === g.guess_score_b) statsMap[g.user_id].tie++;
+          else statsMap[g.user_id].winner++;
+        } else if (g.points_earned === 1) statsMap[g.user_id].single_goal++;
+      });
+    }
+    const sorted = Object.values(statsMap).sort((a: any, b: any) => b.points - a.points);
+    setRanking(sorted);
+  };
+
+  const handleDownloadRanking = () => {
+    const list = ranking.filter(r => r.user_group === rankingFilter).slice(0, 50);
+    if (list.length === 0) { alert('Nenhum dado para exportar.'); return; }
+    const headers = ['Posição', 'Nome', 'E-mail', 'Grupo', 'Pontos', 'Exatos(+10)', 'Vencedor(+3)', 'Empate(+3)', 'Gol(+1)'];
+    const rows = list.map((r, i) => [i + 1, `"${r.name}"`, `"${r.email}"`, `"${r.user_group}"`, r.points, r.exact, r.winner, r.tie, r.single_goal]);
+    const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `top50_${rankingFilter}_${Date.now()}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
+  // ── Matches ───────────────────────────────────────────────────────────────
+  const loadMatches = async () => {
+    const { data } = await supabase.from('matches').select('*').order('match_date', { ascending: true });
+    if (data) {
+      setMatches(data);
+      const init: any = {};
+      data.forEach(m => { init[m.id] = { a: '', b: '' }; });
+      setScores(init);
+    }
   };
 
   const handleAddMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     setMatchMessage('Salvando...');
-    
-    const { error } = await supabase
-      .from('matches')
-      .insert([{
-        team_a: teamA,
-        team_b: teamB,
-        flag_a: flagA,
-        flag_b: flagB,
-        match_date: new Date(matchDate).toISOString(),
-        status: 'pending'
-      }]);
-      
-    if (error) {
-      setMatchMessage(`Erro: ${error.message}`);
-    } else {
-      setMatchMessage(`Jogo cadastrado com sucesso!`);
-      setTeamA(''); setTeamB(''); setMatchDate('');
-      loadMatches();
-    }
+    const { error } = await supabase.from('matches').insert([{
+      team_a: teamA, team_b: teamB, flag_a: flagA, flag_b: flagB,
+      match_date: new Date(matchDate).toISOString(), status: 'pending'
+    }]);
+    if (error) setMatchMessage(`Erro: ${error.message}`);
+    else { setMatchMessage('Jogo cadastrado!'); setTeamA(''); setTeamB(''); setMatchDate(''); loadMatches(); }
   };
 
   const handleDeleteMatch = async (id: string) => {
-    const confirmed = window.confirm("Excluir este jogo permanentemente?");
-    if (!confirmed) return;
+    if (!window.confirm('Excluir este jogo permanentemente?')) return;
     await supabase.from('matches').delete().eq('id', id);
     loadMatches();
   };
 
-  const handleDownloadAudit = async () => {
-    setMatchMessage('Gerando planilha de auditoria...');
-    try {
-      const { data, error } = await supabase
-        .from('guesses')
-        .select(`
-          guess_score_a,
-          guess_score_b,
-          points_earned,
-          created_at,
-          profiles (name, email, user_group),
-          matches (team_a, team_b, match_date, score_a, score_b)
-        `);
-      
-      if (error) {
-        setMatchMessage(`Erro ao baixar: ${error.message}`);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        setMatchMessage('Nenhum palpite foi feito ainda.');
-        return;
-      }
-
-      const headers = ["Nome", "E-mail", "Grupo", "Data do Jogo", "Jogo", "Palpite A", "Palpite B", "Placar Real", "Pontos Ganhos", "Data e Hora do Palpite"];
-      const rows = data.map((g: any) => [
-        `"${g.profiles?.name || 'Desconhecido'}"`,
-        `"${g.profiles?.email || ''}"`,
-        `"${g.profiles?.user_group || ''}"`,
-        `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR') : ''}"`,
-        `"${g.matches?.team_a} x ${g.matches?.team_b}"`,
-        g.guess_score_a,
-        g.guess_score_b,
-        g.matches?.score_a !== null ? `"${g.matches?.score_a} x ${g.matches?.score_b}"` : '"Pendente"',
-        g.points_earned,
-        `"${new Date(g.created_at).toLocaleString('pt-BR')}"`
-      ]);
-
-      const csvContent = [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
-      
-      // Criar o arquivo e baixar automaticamente (bom suporte para Excel em português)
-      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `auditoria_palpites_${new Date().getTime()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setMatchMessage('Planilha gerada com sucesso!');
-    } catch (err: any) {
-      setMatchMessage(`Erro na exportação: ${err.message}`);
-    }
+  const handleFinishMatch = async (matchId: string) => {
+    const sA = scores[matchId]?.a;
+    const sB = scores[matchId]?.b;
+    if (sA === '' || sB === '') { alert('Digite o placar completo!'); return; }
+    if (!window.confirm('Encerrar o jogo e distribuir pontos?')) return;
+    const { error } = await supabase.rpc('finish_match', { p_match_id: matchId, p_real_score_a: parseInt(sA), p_real_score_b: parseInt(sB) });
+    if (error) alert(`Erro: ${error.message}`);
+    else { alert('Pontos distribuídos!'); loadMatches(); }
   };
 
   const handleSyncApi = async () => {
-    const confirmed = window.confirm("Isso vai buscar todos os 104 jogos oficiais da Copa do Mundo 2026. Continuar?");
-    if (!confirmed) return;
-    
-    setMatchMessage('Baixando Tabela da Copa 2026...');
+    if (!window.confirm('Buscar os 104 jogos da Copa 2026?')) return;
+    setMatchMessage('Baixando...');
     try {
       const res = await fetch('/api/sync-matches');
       const data = await res.json();
-      
-      if (data.error) {
-        setMatchMessage(`Erro: ${data.error}`);
-        return;
-      }
-
-      setMatchMessage(`Processando ${data.matches.length} jogos...`);
-      
-      // 1. Extrair seleções únicas para o Dicionário
+      if (data.error) { setMatchMessage(`Erro: ${data.error}`); return; }
       const uniqueTeams = new Set<string>();
-      data.matches.forEach((m: any) => {
-        uniqueTeams.add(m.team_a);
-        uniqueTeams.add(m.team_b);
-      });
-      
-      const newTranslations = Array.from(uniqueTeams).map(team => ({
-        api_name: team,
-        pt_name: team,
-        flag_code: 'un'
-      }));
-
-      // 2. Inserir no Dicionário ignorando os que já existem (upsert na mão)
-      await supabase.from('team_translations').upsert(newTranslations, { onConflict: 'api_name', ignoreDuplicates: true });
-      loadTranslations();
-
-      // 3. Salvar os jogos
+      data.matches.forEach((m: any) => { uniqueTeams.add(m.team_a); uniqueTeams.add(m.team_b); });
+      const inserts = Array.from(uniqueTeams).map(t => ({ api_name: t, pt_name: t, flag_code: 'un' }));
+      await supabase.from('team_translations').upsert(inserts, { onConflict: 'api_name', ignoreDuplicates: true });
       const { error } = await supabase.from('matches').insert(data.matches);
-      
-      if (error) {
-        setMatchMessage(`Erro ao salvar jogos: ${error.message}`);
-      } else {
-        setMatchMessage(`🎉 Sincronização concluída! ${data.matches.length} jogos e traduções importados com sucesso!`);
-        loadMatches();
-      }
-    } catch (err: any) {
-      setMatchMessage(`Erro de conexão: ${err.message}`);
-    }
+      if (error) setMatchMessage(`Erro: ${error.message}`);
+      else { setMatchMessage(`🎉 ${data.matches.length} jogos sincronizados!`); loadMatches(); loadTranslations(); }
+    } catch (err: any) { setMatchMessage(`Erro: ${err.message}`); }
   };
 
   const handleClearAll = async () => {
-    const confirmed = window.confirm("CUIDADO: Isso vai excluir TODOS os jogos e palpites do sistema. Tem certeza?");
-    if (!confirmed) return;
-    setMatchMessage('Excluindo banco de dados...');
+    if (!window.confirm('CUIDADO: Apagar TODOS os jogos e palpites?')) return;
     await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    setMatchMessage('Todos os jogos foram apagados!');
+    setMatchMessage('Todos os jogos apagados!');
     loadMatches();
   };
 
-  const handleFinishMatch = async (matchId: string) => {
-    const scoreA = scores[matchId]?.a;
-    const scoreB = scores[matchId]?.b;
-    
-    if (scoreA === '' || scoreB === '') {
-      alert("Digite o placar completo antes de finalizar!");
-      return;
-    }
+  const handleDownloadAudit = async () => {
+    setMatchMessage('Gerando auditoria...');
+    try {
+      const { data, error } = await supabase.from('guesses').select(`
+        guess_score_a, guess_score_b, points_earned, created_at,
+        profiles (name, email, user_group),
+        matches (team_a, team_b, match_date, score_a, score_b)
+      `);
+      if (error) { setMatchMessage(`Erro: ${error.message}`); return; }
+      if (!data || data.length === 0) { setMatchMessage('Nenhum palpite ainda.'); return; }
+      const headers = ['Nome', 'E-mail', 'Grupo', 'Data do Jogo', 'Jogo', 'Palpite A', 'Palpite B', 'Placar Real', 'Pontos', 'Data/Hora do Palpite'];
+      const rows = data.map((g: any) => [
+        `"${g.profiles?.name || ''}"`, `"${g.profiles?.email || ''}"`, `"${g.profiles?.user_group || ''}"`,
+        `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR') : ''}"`,
+        `"${g.matches?.team_a} x ${g.matches?.team_b}"`,
+        g.guess_score_a, g.guess_score_b,
+        g.matches?.score_a !== null ? `"${g.matches?.score_a} x ${g.matches?.score_b}"` : '"Pendente"',
+        g.points_earned, `"${new Date(g.created_at).toLocaleString('pt-BR')}"`
+      ]);
+      const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `auditoria_${Date.now()}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setMatchMessage('Planilha gerada!');
+    } catch (err: any) { setMatchMessage(`Erro: ${err.message}`); }
+  };
 
-    const confirmAction = window.confirm(`Isso vai encerrar o jogo e dar os pontos. Confirmar?`);
-    if (!confirmAction) return;
-
-    const { error } = await supabase.rpc('finish_match', {
-      p_match_id: matchId,
-      p_real_score_a: parseInt(scoreA),
-      p_real_score_b: parseInt(scoreB)
-    });
-
-    if (error) {
-      alert(`Erro ao finalizar jogo: ${error.message}`);
-    } else {
-      alert("Pontos calculados e distribuídos com sucesso!");
-      loadMatches();
+  // ── Fases ─────────────────────────────────────────────────────────────────
+  const loadPhases = async () => {
+    const { data } = await supabase.from('phase_settings').select('*');
+    if (data) {
+      const map: any = {};
+      data.forEach((p: any) => { map[p.phase_key] = p.is_open; });
+      setOpenPhases(map);
     }
   };
 
-  if (checking) return <div style={{ padding: '2rem', textAlign: 'center' }}>Verificando credenciais...</div>;
+  const handleTogglePhase = async (key: string) => {
+    const current = openPhases[key] ?? false;
+    const newVal = !current;
+    setPhaseMessage('Salvando...');
+    const { error } = await supabase.from('phase_settings').upsert({ phase_key: key, is_open: newVal }, { onConflict: 'phase_key' });
+    if (error) {
+      setPhaseMessage(`Erro: ${error.message}`);
+    } else {
+      setOpenPhases(prev => ({ ...prev, [key]: newVal }));
+      setPhaseMessage(`${newVal ? '🔓 Fase aberta' : '🔒 Fase fechada'} com sucesso!`);
+      setTimeout(() => setPhaseMessage(''), 3000);
+    }
+  };
 
-  if (!isAdmin) {
-    return (
-      <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-        <h1 style={{ color: '#ff4444', marginBottom: '1rem' }}>Acesso Negado</h1>
-        <p>Apenas administradores podem acessar esta página.</p>
-        <Link href="/" style={{ display: 'inline-block', marginTop: '2rem', color: '#2C67EA' }}>Voltar para a Home</Link>
-      </div>
-    );
-  }
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (checking) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0F1849', color: '#fff', fontSize: '1.2rem' }}>Verificando credenciais...</div>;
+  if (!isAdmin) return <div style={{ padding: '4rem', textAlign: 'center' }}><h1 style={{ color: '#ef4444' }}>Acesso Negado</h1><Link href="/">Voltar</Link></div>;
 
   return (
-    <div style={{ padding: '1rem', maxWidth: '800px', margin: '0 auto', color: '#333' }}>
-      <Link href="/" style={{ color: '#2C67EA', marginBottom: '1rem', display: 'inline-block' }}>← Voltar para a Home</Link>
-      
-      <h1 style={{ fontSize: '2rem', marginBottom: '2rem', color: '#fff' }}>Painel do Administrador</h1>
-      
-      {/* SEÇÃO USUÁRIOS E PERMISSÕES */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👑 Gestão de Usuários (Tornar Admin)</h2>
-        
-        <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
-          {profiles.map(user => (
-            <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #eee', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0F1849' }}>
-                  {user.name} {user.role === 'admin' && <span style={{ fontSize: '0.7rem', backgroundColor: '#eab308', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Admin</span>}
-                </span>
-                <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email || 'Usuário'}</span>
-              </div>
-              <button 
-                onClick={() => handleToggleAdmin(user.id, user.role)} 
-                style={{ 
-                  padding: '0.5rem 1rem', 
-                  backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontWeight: 'bold',
-                  fontSize: '0.8rem'
-                }}
-              >
-                {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
-              </button>
-            </div>
-          ))}
-          {profiles.length === 0 && <p style={{ padding: '1rem', color: '#888' }}>Nenhum usuário cadastrado ainda.</p>}
-        </div>
-      </div>
-
-      {/* SEÇÃO E-MAILS */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👥 Cadastro de Participantes</h2>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Adicionar E-mail</h3>
-            <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <input type="email" placeholder="E-mail" value={emailToAdd} onChange={(e) => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-              <select value={group} onChange={(e) => setGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <option value="entregador">Entregador</option>
-                <option value="colaborador">Colaborador</option>
-              </select>
-              <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar Individual</button>
-            </form>
-            {message && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{message}</div>}
-          </div>
-
-          <div>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Subir CSV</h3>
-            <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
-              <button type="submit" disabled={!csvFile} style={{ padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: 'white', border: 'none', borderRadius: '6px', cursor: csvFile ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}>
-                Enviar Planilha
-              </button>
-            </form>
-            {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
-          </div>
-        </div>
-
-        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>E-mails Autorizados ({allowedEmails.length})</h3>
-        <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
-          {allowedEmails.map(item => (
-            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #eee' }}>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.email}</span>
-                <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase' }}>{item.user_group}</span>
-              </div>
-              <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir">🗑️</button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* SEÇÃO DICIONÁRIO DE SELEÇÕES */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>🌍 Dicionário de Seleções</h2>
-        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>Sempre que a API baixar os jogos, ela usará este dicionário para traduzir os nomes e exibir as bandeiras corretas.</p>
-        
-        <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ backgroundColor: '#f9f9fa', position: 'sticky', top: 0 }}>
-              <tr>
-                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Nome API (Original)</th>
-                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Nome em Português</th>
-                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Sigla (2 letras)</th>
-                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Salvar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {translations.map((t, index) => (
-                <tr key={t.api_name} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.8rem', color: '#888', fontWeight: 'bold' }}>{t.api_name}</td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input 
-                      type="text" 
-                      value={t.pt_name} 
-                      onChange={(e) => {
-                        const newArr = [...translations];
-                        newArr[index] = { ...newArr[index], pt_name: e.target.value };
-                        setTranslations(newArr);
-                      }}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input 
-                      type="text" 
-                      maxLength={6}
-                      value={t.flag_code} 
-                      onChange={(e) => {
-                        const newArr = [...translations];
-                        newArr[index] = { ...newArr[index], flag_code: e.target.value.toLowerCase() };
-                        setTranslations(newArr);
-                      }}
-                      style={{ width: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center' }}
-                    />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <button 
-                      onClick={async () => {
-                        await supabase.from('team_translations').update({ pt_name: t.pt_name, flag_code: t.flag_code }).eq('api_name', t.api_name);
-                        alert(`Tradução de ${t.api_name} salva!`);
-                      }}
-                      style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      Salvar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {translations.length === 0 && (
-                <tr>
-                  <td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
-                    Nenhuma seleção encontrada. Sincronize a tabela de jogos para preencher automaticamente.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* SEÇÃO TOP 50 RANKING DETALHADO */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.5rem', margin: 0, color: '#0F1849' }}>🏆 Top 50 Ranking Detalhado</h2>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <select 
-              value={rankingFilter} 
-              onChange={e => setRankingFilter(e.target.value)} 
-              style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}
-            >
-              <option value="entregador">Entregadores</option>
-              <option value="colaborador">Colaboradores Internos</option>
-            </select>
-            <button 
-              onClick={handleDownloadRanking}
-              style={{ padding: '0.6rem 1.2rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              📊 Exportar Ranking (Excel)
-            </button>
-          </div>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', fontSize: '0.85rem' }}>
-                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>Pos</th>
-                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>Nome</th>
-                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0' }}>Pontos Totais</th>
-                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Placar Exato (+10)</th>
-                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Vencedor (+3)</th>
-                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Empate (+3)</th>
-                <th style={{ padding: '1rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Gol Isolado (+1)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranking.filter(r => r.user_group === rankingFilter).slice(0, 50).map((r, index) => (
-                <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '1rem', fontWeight: 'bold', color: index < 3 ? '#eab308' : '#333' }}>{index + 1}º</td>
-                  <td style={{ padding: '1rem', fontWeight: 'bold', color: '#0F1849' }}>{r.name}<br/><span style={{fontSize: '0.75rem', color: '#888', fontWeight: 'normal'}}>{r.email}</span></td>
-                  <td style={{ padding: '1rem', fontSize: '1.2rem', fontWeight: '900', color: '#2C67EA' }}>{r.points}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.exact}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.winner}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.tie}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>{r.single_goal}</td>
-                </tr>
-              ))}
-              {ranking.filter(r => r.user_group === rankingFilter).length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Ninguém deste grupo pontuou ainda.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* SEÇÃO JOGOS */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.5rem', color: '#0F1849', margin: 0 }}>⚽ Gestão de Jogos</h2>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={handleDownloadAudit} style={{ padding: '0.6rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-              📊 Auditoria
-            </button>
-            <button onClick={handleSyncApi} style={{ padding: '0.6rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-              🔄 Tabela 2026 Completa
-            </button>
-            <button onClick={handleClearAll} style={{ padding: '0.6rem 1rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-              🗑 Limpar Todos
-            </button>
-          </div>
-        </div>
-        
-        {/* ADD JOGO */}
-        <div style={{ backgroundColor: '#f9f9fa', padding: '1rem', borderRadius: '8px', marginBottom: '2rem' }}>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Agendar Nova Partida</h3>
-          <form onSubmit={handleAddMatch} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', alignItems: 'end' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time A</label>
-              <input type="text" value={teamA} onChange={e => setTeamA(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla A (ex: br)</label>
-              <input type="text" value={flagA} onChange={e => setFlagA(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time B</label>
-              <input type="text" value={teamB} onChange={e => setTeamB(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla B (ex: ar)</label>
-              <input type="text" value={flagB} onChange={e => setFlagB(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Data e Hora</label>
-              <input type="datetime-local" value={matchDate} onChange={e => setMatchDate(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            <button type="submit" style={{ gridColumn: '1 / -1', padding: '0.8rem', backgroundColor: '#0F1849', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar Jogo</button>
-          </form>
-          {matchMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{matchMessage}</div>}
-        </div>
-
-        {/* LISTA JOGOS */}
+    <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8' }}>
+      {/* HEADER */}
+      <header style={{ backgroundColor: '#0F1849', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Partidas Cadastradas</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {matches.map(match => (
-              <div key={match.id} style={{ display: 'flex', flexDirection: 'column', padding: '1rem', border: '1px solid #eee', borderRadius: '8px', position: 'relative' }}>
-                <button onClick={() => handleDeleteMatch(match.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir Jogo">🗑️</button>
-                
-                <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
-                  {new Date(match.match_date).toLocaleString('pt-BR')} | Status: {match.status === 'pending' ? 'Pendente' : 'Encerrado'}
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 'bold' }}>{match.team_a}</span>
-                  {match.status === 'pending' ? (
-                    <>
-                      <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={(e) => setScores({...scores, [match.id]: {...scores[match.id], a: e.target.value}})} style={{ width: '40px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
-                      <span style={{ color: '#888' }}>X</span>
-                      <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={(e) => setScores({...scores, [match.id]: {...scores[match.id], b: e.target.value}})} style={{ width: '40px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
-                    </>
-                  ) : (
-                    <span style={{ fontSize: '1.5rem', margin: '0 1rem' }}>{match.score_a} X {match.score_b}</span>
-                  )}
-                  <span style={{ fontWeight: 'bold' }}>{match.team_b}</span>
-                </div>
-
-                {match.status === 'pending' && (
-                  <button onClick={() => handleFinishMatch(match.id)} style={{ marginTop: '1.5rem', padding: '0.6rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                    Encerrar e Dar Pontos
-                  </button>
-                )}
-              </div>
-            ))}
-            {matches.length === 0 && <p style={{ color: '#888', fontSize: '0.9rem' }}>Nenhum jogo na lista.</p>}
-          </div>
+          <h1 style={{ color: '#fff', margin: 0, fontSize: '1.5rem', fontWeight: '900' }}>⚙️ Painel do Administrador</h1>
+          <Link href="/dashboard" style={{ color: '#93c5fd', fontSize: '0.85rem' }}>← Voltar ao Dashboard</Link>
         </div>
-      </div>
+      </header>
+
+      {/* TABS */}
+      <nav style={{ backgroundColor: '#fff', borderBottom: '2px solid #e2e8f0', display: 'flex', overflowX: 'auto', gap: 0 }}>
+        {TABS.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '1rem 1.5rem',
+              border: 'none',
+              borderBottom: activeTab === tab ? '3px solid #2C67EA' : '3px solid transparent',
+              backgroundColor: 'transparent',
+              color: activeTab === tab ? '#2C67EA' : '#64748b',
+              fontWeight: activeTab === tab ? '700' : '500',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontSize: '0.9rem',
+              transition: 'all 0.2s'
+            }}
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        ))}
+      </nav>
+
+      <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
+
+        {/* ── TAB: RANKING ───────────────────────────────────────────── */}
+        {activeTab === 'ranking' && (
+          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h2 style={{ margin: 0, color: '#0F1849', fontSize: '1.5rem' }}>🏆 Top 50 — Ranking Detalhado</h2>
+              <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                <select value={rankingFilter} onChange={e => setRankingFilter(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}>
+                  <option value="entregador">Entregadores</option>
+                  <option value="colaborador">Colaboradores</option>
+                </select>
+                <button onClick={handleDownloadRanking} style={{ padding: '0.6rem 1.2rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  📊 Exportar Excel
+                </button>
+                <button onClick={loadRanking} style={{ padding: '0.6rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  🔄 Atualizar
+                </button>
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '750px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', fontSize: '0.8rem', color: '#64748b' }}>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>Pos</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>Nome</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Pontos</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Exatos</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Vencedor</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Empate</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Gol Iso.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ranking.filter(r => r.user_group === rankingFilter).slice(0, 50).map((r, i) => (
+                    <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', backgroundColor: i < 3 ? '#fffbeb' : 'transparent' }}>
+                      <td style={{ padding: '0.8rem', fontWeight: 'bold', color: i === 0 ? '#eab308' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#555' }}>
+                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}
+                      </td>
+                      <td style={{ padding: '0.8rem' }}>
+                        <span style={{ fontWeight: '700', color: '#0F1849' }}>{r.name}</span>
+                        <br /><span style={{ fontSize: '0.75rem', color: '#888' }}>{r.email}</span>
+                      </td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center', fontSize: '1.1rem', fontWeight: '900', color: '#2C67EA' }}>{r.points}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.exact}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.winner}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.tie}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.single_goal}</td>
+                    </tr>
+                  ))}
+                  {ranking.filter(r => r.user_group === rankingFilter).length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Ninguém pontuou ainda.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: USUÁRIOS ──────────────────────────────────────────── */}
+        {activeTab === 'usuarios' && (
+          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, color: '#0F1849' }}>👑 Gestão de Usuários</h2>
+              <button onClick={loadProfiles} style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Atualizar</button>
+            </div>
+            <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+              {profiles.map(user => (
+                <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #f0f0f0', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
+                  <div>
+                    <span style={{ fontWeight: 'bold', color: '#0F1849' }}>{user.name}</span>
+                    {user.role === 'admin' && <span style={{ fontSize: '0.7rem', backgroundColor: '#eab308', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Admin</span>}
+                    <br />
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · {user.user_group} · {user.points} pts</span>
+                  </div>
+                  <button onClick={() => handleToggleAdmin(user.id, user.role)} style={{ padding: '0.4rem 0.8rem', backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                  </button>
+                </div>
+              ))}
+              {profiles.length === 0 && <p style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Nenhum usuário cadastrado ainda.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: E-MAILS ───────────────────────────────────────────── */}
+        {activeTab === 'emails' && (
+          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ color: '#0F1849', marginBottom: '1.5rem' }}>📧 Cadastro de Participantes</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px,1fr))', gap: '2rem', marginBottom: '2rem' }}>
+              <div>
+                <h3 style={{ color: '#666', marginBottom: '1rem' }}>Adicionar E-mail</h3>
+                <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <input type="email" placeholder="E-mail" value={emailToAdd} onChange={e => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  <select value={emailGroup} onChange={e => setEmailGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}>
+                    <option value="entregador">Entregador</option>
+                    <option value="colaborador">Colaborador</option>
+                  </select>
+                  <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Adicionar</button>
+                </form>
+                {emailMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{emailMessage}</div>}
+              </div>
+              <div>
+                <h3 style={{ color: '#666', marginBottom: '1rem' }}>Importar CSV</h3>
+                <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
+                  <button type="submit" disabled={!csvFile} style={{ padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: csvFile ? 'pointer' : 'not-allowed' }}>Enviar Planilha</button>
+                </form>
+                {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
+              </div>
+            </div>
+            <h3 style={{ color: '#666', marginBottom: '1rem' }}>E-mails Autorizados ({allowedEmails.length})</h3>
+            <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+              {allowedEmails.map(item => (
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0' }}>
+                  <div>
+                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.email}</span>
+                    <br /><span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase' }}>{item.user_group}</span>
+                  </div>
+                  <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: DICIONÁRIO ─────────────────────────────────────────── */}
+        {activeTab === 'dicionario' && (
+          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ color: '#0F1849', marginBottom: '0.5rem' }}>🌍 Dicionário de Seleções</h2>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Traduza os nomes das seleções e defina a sigla ISO de 2 letras para exibir a bandeira correta.</p>
+            <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9f9fa', position: 'sticky', top: 0 }}>
+                  <tr>
+                    <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666', textAlign: 'left' }}>Nome API</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666', textAlign: 'left' }}>Português</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666', textAlign: 'left' }}>Sigla</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666', textAlign: 'left' }}>Salvar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {translations.map((t, index) => (
+                    <tr key={t.api_name} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '0.6rem 0.8rem', color: '#888', fontWeight: 'bold', fontSize: '0.85rem' }}>{t.api_name}</td>
+                      <td style={{ padding: '0.4rem' }}>
+                        <input type="text" value={t.pt_name} onChange={e => { const a = [...translations]; a[index] = { ...a[index], pt_name: e.target.value }; setTranslations(a); }} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+                      </td>
+                      <td style={{ padding: '0.4rem' }}>
+                        <input type="text" maxLength={6} value={t.flag_code} onChange={e => { const a = [...translations]; a[index] = { ...a[index], flag_code: e.target.value.toLowerCase() }; setTranslations(a); }} style={{ width: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center' }} />
+                      </td>
+                      <td style={{ padding: '0.4rem' }}>
+                        <button onClick={async () => { await supabase.from('team_translations').update({ pt_name: t.pt_name, flag_code: t.flag_code }).eq('api_name', t.api_name); }} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                          ✅ Salvar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {translations.length === 0 && (
+                    <tr><td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Nenhuma seleção. Sincronize os jogos primeiro.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: JOGOS ──────────────────────────────────────────────── */}
+        {activeTab === 'jogos' && (
+          <div>
+            {/* Ações */}
+            <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <button onClick={handleSyncApi} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Sincronizar Copa 2026</button>
+              <button onClick={handleDownloadAudit} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📊 Baixar Auditoria</button>
+              <button onClick={handleClearAll} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🗑 Limpar Tudo</button>
+            </div>
+            {matchMessage && <div style={{ marginBottom: '1rem', padding: '0.8rem', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2C67EA', fontWeight: 'bold' }}>{matchMessage}</div>}
+
+            {/* Agendar jogo */}
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '1.5rem' }}>
+              <h3 style={{ color: '#0F1849', marginBottom: '1rem' }}>➕ Agendar Nova Partida</h3>
+              <form onSubmit={handleAddMatch} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: '1rem', alignItems: 'end' }}>
+                <div><label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time A</label><input type="text" value={teamA} onChange={e => setTeamA(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} /></div>
+                <div><label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla A (ex: br)</label><input type="text" value={flagA} onChange={e => setFlagA(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} /></div>
+                <div><label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time B</label><input type="text" value={teamB} onChange={e => setTeamB(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} /></div>
+                <div><label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla B (ex: ar)</label><input type="text" value={flagB} onChange={e => setFlagB(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Data e Hora</label><input type="datetime-local" value={matchDate} onChange={e => setMatchDate(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} /></div>
+                <button type="submit" style={{ gridColumn: '1 / -1', padding: '0.8rem', backgroundColor: '#0F1849', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar Jogo</button>
+              </form>
+            </div>
+
+            {/* Lista jogos */}
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+              <h3 style={{ color: '#0F1849', marginBottom: '1rem' }}>Partidas Cadastradas ({matches.length})</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '600px', overflowY: 'auto' }}>
+                {matches.map(match => (
+                  <div key={match.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.8rem 1rem', border: '1px solid #eee', borderRadius: '8px', flexWrap: 'wrap' }}>
+                    <button onClick={() => handleDeleteMatch(match.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Excluir">🗑️</button>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#888' }}>{new Date(match.match_date).toLocaleString('pt-BR')} | {match.status === 'pending' ? '⏳ Pendente' : '✅ Encerrado'}</div>
+                      <div style={{ fontWeight: 'bold', color: '#0F1849' }}>{match.team_a} x {match.team_b}</div>
+                    </div>
+                    {match.status === 'pending' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                        <span>x</span>
+                        <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], b: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                        <button onClick={() => handleFinishMatch(match.id)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Encerrar</button>
+                      </div>
+                    ) : (
+                      <span style={{ fontWeight: 'bold', color: '#10b981' }}>{match.score_a} x {match.score_b}</span>
+                    )}
+                  </div>
+                ))}
+                {matches.length === 0 && <p style={{ color: '#888', textAlign: 'center', padding: '2rem' }}>Nenhum jogo cadastrado.</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: FASES ──────────────────────────────────────────────── */}
+        {activeTab === 'fases' && (
+          <div>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: '#0F1849', marginBottom: '0.5rem' }}>🔓 Controle de Fases</h2>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                A <strong>Fase de Grupos</strong> já está sempre liberada. Quando as fases eliminatórias estiverem definidas (com os times confirmados), abra cada fase aqui para liberar os palpites dos usuários.
+              </p>
+              {phaseMessage && <div style={{ marginBottom: '1rem', padding: '0.8rem', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2C67EA', fontWeight: 'bold' }}>{phaseMessage}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                {PHASES.map(phase => {
+                  const isOpen = phase.key === 'group' ? true : (openPhases[phase.key] ?? false);
+                  const isFixed = phase.key === 'group';
+                  return (
+                    <div key={phase.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.2rem 1.5rem', border: `2px solid ${isOpen ? '#10b981' : '#e2e8f0'}`, borderRadius: '12px', backgroundColor: isOpen ? '#f0fdf4' : '#f8fafc' }}>
+                      <div>
+                        <span style={{ fontWeight: '700', color: '#0F1849', fontSize: '1rem' }}>{phase.label}</span>
+                        {isFixed && <span style={{ marginLeft: '0.8rem', fontSize: '0.7rem', backgroundColor: '#10b981', color: '#fff', padding: '2px 8px', borderRadius: '10px' }}>Sempre aberta</span>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: isOpen ? '#10b981' : '#94a3b8' }}>
+                          {isOpen ? '🔓 ABERTA' : '🔒 FECHADA'}
+                        </span>
+                        {!isFixed && (
+                          <button
+                            onClick={() => handleTogglePhase(phase.key)}
+                            style={{
+                              padding: '0.5rem 1.2rem',
+                              backgroundColor: isOpen ? '#ef4444' : '#10b981',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontWeight: 'bold',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            {isOpen ? 'Fechar Fase' : 'Abrir Fase'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '12px', padding: '1rem 1.5rem' }}>
+              <h3 style={{ color: '#b45309', margin: '0 0 0.5rem 0' }}>⚠️ Ação necessária no banco de dados</h3>
+              <p style={{ color: '#92400e', fontSize: '0.9rem', margin: 0 }}>
+                Para a aba de Fases funcionar, crie a tabela <strong>phase_settings</strong> no Supabase SQL Editor:
+              </p>
+              <pre style={{ backgroundColor: '#fff', padding: '0.8rem', borderRadius: '6px', fontSize: '0.8rem', marginTop: '0.8rem', overflowX: 'auto', color: '#333' }}>
+{`CREATE TABLE IF NOT EXISTS public.phase_settings (
+  phase_key TEXT PRIMARY KEY,
+  is_open BOOLEAN DEFAULT false,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.phase_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "admin_all" ON public.phase_settings FOR ALL
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "public_read" ON public.phase_settings FOR SELECT USING (true);`}
+              </pre>
+            </div>
+          </div>
+        )}
+
+      </main>
     </div>
   );
 }
