@@ -232,7 +232,7 @@ export default function AdminPanel() {
           guess_score_b,
           points_earned,
           created_at,
-          profiles (name, email),
+          profiles (name, email, user_group),
           matches (team_a, team_b, match_date, score_a, score_b)
         `);
       
@@ -246,10 +246,11 @@ export default function AdminPanel() {
         return;
       }
 
-      const headers = ["Nome", "E-mail", "Data do Jogo", "Jogo", "Palpite A", "Palpite B", "Placar Real", "Pontos Ganhos", "Data e Hora do Palpite"];
+      const headers = ["Nome", "E-mail", "Grupo", "Data do Jogo", "Jogo", "Palpite A", "Palpite B", "Placar Real", "Pontos Ganhos", "Data e Hora do Palpite"];
       const rows = data.map((g: any) => [
         `"${g.profiles?.name || 'Desconhecido'}"`,
         `"${g.profiles?.email || ''}"`,
+        `"${g.profiles?.user_group || ''}"`,
         `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR') : ''}"`,
         `"${g.matches?.team_a} x ${g.matches?.team_b}"`,
         g.guess_score_a,

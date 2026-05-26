@@ -494,7 +494,7 @@ export default function Dashboard() {
           <aside style={{ flex: '1 1 300px', maxWidth: '400px' }}>
             <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #eee', position: 'sticky', top: '2rem' }}>
               <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0', color: '#0F1849', borderBottom: '2px solid #f0f4f8', paddingBottom: '0.5rem' }}>
-                🏆 Ranking ao Vivo
+                🏆 Top 10 do Ranking
               </h2>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
