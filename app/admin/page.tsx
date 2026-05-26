@@ -63,6 +63,7 @@ export default function AdminPanel() {
   // Fases
   const [openPhases, setOpenPhases] = useState<Record<string, boolean>>({});
   const [phaseMessage, setPhaseMessage] = useState('');
+  const [phaseTableReady, setPhaseTableReady] = useState(false);
 
   const supabase = createClient();
 
@@ -302,12 +303,15 @@ export default function AdminPanel() {
 
   // ── Fases ─────────────────────────────────────────────────────────────────
   const loadPhases = async () => {
-    const { data } = await supabase.from('phase_settings').select('*');
-    if (data) {
-      const map: any = {};
-      data.forEach((p: any) => { map[p.phase_key] = p.is_open; });
-      setOpenPhases(map);
+    const { data, error } = await supabase.from('phase_settings').select('*');
+    if (error || data === null) {
+      setPhaseTableReady(false); // tabela não existe ou erro de permissão
+      return;
     }
+    setPhaseTableReady(true); // tabela existe!
+    const map: any = {};
+    data.forEach((p: any) => { map[p.phase_key] = p.is_open; });
+    setOpenPhases(map);
   };
 
   const handleTogglePhase = async (key: string) => {
@@ -628,12 +632,13 @@ export default function AdminPanel() {
                 })}
               </div>
             </div>
-            <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '12px', padding: '1rem 1.5rem' }}>
-              <h3 style={{ color: '#b45309', margin: '0 0 0.5rem 0' }}>⚠️ Ação necessária no banco de dados</h3>
-              <p style={{ color: '#92400e', fontSize: '0.9rem', margin: 0 }}>
-                Para a aba de Fases funcionar, crie a tabela <strong>phase_settings</strong> no Supabase SQL Editor:
-              </p>
-              <pre style={{ backgroundColor: '#fff', padding: '0.8rem', borderRadius: '6px', fontSize: '0.8rem', marginTop: '0.8rem', overflowX: 'auto', color: '#333' }}>
+            {!phaseTableReady && (
+              <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '12px', padding: '1rem 1.5rem' }}>
+                <h3 style={{ color: '#b45309', margin: '0 0 0.5rem 0' }}>⚠️ Ação necessária no banco de dados</h3>
+                <p style={{ color: '#92400e', fontSize: '0.9rem', margin: 0 }}>
+                  Para a aba de Fases funcionar, crie a tabela <strong>phase_settings</strong> no Supabase SQL Editor:
+                </p>
+                <pre style={{ backgroundColor: '#fff', padding: '0.8rem', borderRadius: '6px', fontSize: '0.8rem', marginTop: '0.8rem', overflowX: 'auto', color: '#333' }}>
 {`CREATE TABLE IF NOT EXISTS public.phase_settings (
   phase_key TEXT PRIMARY KEY,
   is_open BOOLEAN DEFAULT false,
@@ -643,8 +648,18 @@ ALTER TABLE public.phase_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "admin_all" ON public.phase_settings FOR ALL
   USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
 CREATE POLICY "public_read" ON public.phase_settings FOR SELECT USING (true);`}
-              </pre>
-            </div>
+                </pre>
+                <button onClick={loadPhases} style={{ marginTop: '1rem', padding: '0.6rem 1.2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  🔄 Verificar novamente
+                </button>
+              </div>
+            )}
+            {phaseTableReady && (
+              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #10b981', borderRadius: '12px', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>✅</span>
+                <p style={{ color: '#065f46', fontWeight: 'bold', margin: 0 }}>Tabela de fases conectada com sucesso! Os toggles estão funcionando.</p>
+              </div>
+            )}
           </div>
         )}
 
