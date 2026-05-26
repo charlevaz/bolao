@@ -69,7 +69,6 @@ export default function Dashboard() {
       if (matchesData && matchesData.length > 0) {
         setMatches(matchesData);
         
-        // Extrair dias únicos
         const daysMap = new Map();
         const daysFormat: any[] = [];
         
@@ -188,219 +187,221 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', backgroundColor: '#111315', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#10b981' }}>Carregando sua área...</div>;
+    return <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#0F1849' }}>Carregando sua área...</div>;
   }
 
-  // Filtrar jogos do dia selecionado
   const filteredMatches = matches.filter(m => m.match_date.startsWith(selectedDay));
   const progressPercent = matches.length > 0 ? Math.round((guesses.length / matches.length) * 100) : 0;
 
   return (
-    <div style={{ backgroundColor: '#111315', minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ backgroundColor: '#f0f4f8', minHeight: '100vh', color: '#333', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       
       {/* HEADER TOP */}
-      <header style={{ backgroundColor: '#181a1f', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a2d35' }}>
+      <header style={{ backgroundColor: '#0F1849', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#000' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#2C67EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>
             {profile?.name?.charAt(0).toUpperCase()}
           </div>
           <div>
             <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>{profile?.name}</h1>
-            <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>{profile?.points} pts • {profile?.exact_scores} cravadas</p>
+            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>{profile?.points} pts • {profile?.exact_scores} cravadas</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {profile?.role === 'admin' && (
             <Link href="/admin" style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', textDecoration: 'none' }}>Admin</Link>
           )}
-          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.9rem' }}>Sair</button>
+          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.8, cursor: 'pointer', fontSize: '0.9rem' }}>Sair</button>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
         
-        {/* LADO ESQUERDO: PALPITES (70%) */}
-        <section style={{ flex: '1 1 600px' }}>
-          
-          {/* CARROSSEL DE DIAS */}
-          <div style={{ display: 'flex', overflowX: 'auto', gap: '0.5rem', paddingBottom: '1rem', marginBottom: '1rem', scrollbarWidth: 'none' }}>
-            {uniqueDays.map((d) => (
-              <button 
-                key={d.date}
-                onClick={() => setSelectedDay(d.date)}
-                style={{ 
-                  flexShrink: 0,
-                  padding: '0.8rem 1.2rem', 
-                  backgroundColor: selectedDay === d.date ? '#181a1f' : 'transparent', 
-                  border: selectedDay === d.date ? '1px solid #10b981' : '1px solid #2a2d35',
-                  borderRadius: '12px',
-                  color: selectedDay === d.date ? '#10b981' : '#888',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '80px'
-                }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{d.short}</span>
-                <span style={{ fontSize: '1rem', fontWeight: '900', color: selectedDay === d.date ? '#fff' : '#aaa' }}>{d.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* BARRA DE PROGRESSO */}
-          <div style={{ backgroundColor: '#181a1f', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.9rem', color: '#aaa' }}>{guesses.length} de {matches.length} palpites feitos</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '50%' }}>
-              <div style={{ flex: 1, height: '8px', backgroundColor: '#2a2d35', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: '#eab308' }}></div>
-              </div>
-              <span style={{ fontSize: '0.8rem', color: '#eab308', fontWeight: 'bold' }}>{progressPercent}%</span>
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+          {/* LADO ESQUERDO: PALPITES */}
+          <section style={{ flex: '1 1 600px', minWidth: '300px' }}>
+            
+            {/* CARROSSEL DE DIAS */}
+            <div style={{ display: 'flex', overflowX: 'auto', gap: '0.5rem', paddingBottom: '1rem', marginBottom: '1rem', scrollbarWidth: 'thin' }}>
+              {uniqueDays.map((d) => (
+                <button 
+                  key={d.date}
+                  onClick={() => setSelectedDay(d.date)}
+                  style={{ 
+                    flexShrink: 0,
+                    padding: '0.8rem 1.2rem', 
+                    backgroundColor: selectedDay === d.date ? '#2C67EA' : '#fff', 
+                    border: selectedDay === d.date ? '2px solid #2C67EA' : '1px solid #ddd',
+                    borderRadius: '12px',
+                    color: selectedDay === d.date ? '#fff' : '#666',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    minWidth: '80px',
+                    boxShadow: selectedDay === d.date ? '0 4px 10px rgba(44, 103, 234, 0.3)' : 'none'
+                  }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{d.short}</span>
+                  <span style={{ fontSize: '1rem', fontWeight: '900' }}>{d.label}</span>
+                </button>
+              ))}
             </div>
-          </div>
 
-          {/* LISTA DE JOGOS DO DIA */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {filteredMatches.length === 0 ? (
-              <p style={{ color: '#888', textAlign: 'center' }}>Nenhum jogo neste dia.</p>
-            ) : filteredMatches.map(match => {
-              const locked = isLocked(match.match_date) || match.status === 'finished';
-              const myGuess = guesses.find(g => g.match_id === match.id);
-
-              return (
-                <div key={match.id} style={{ backgroundColor: '#181a1f', borderRadius: '12px', padding: '1.5rem', border: '1px solid #2a2d35' }}>
-                  
-                  {/* BADGES SUPERIORES */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      {!myGuess && !locked && (
-                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '12px', border: '1px solid #eab308', color: '#eab308' }}>
-                          ⚠️ Sem palpite
-                        </span>
-                      )}
-                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '12px', border: locked ? '1px solid #ef4444' : '1px solid #10b981', color: locked ? '#ef4444' : '#10b981' }}>
-                        {locked ? '🔒 Encerrado' : `🕒 ${calculateDaysLeft(match.match_date)}`}
-                      </span>
-                    </div>
-                    {myGuess && <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '12px', backgroundColor: '#10b98120', color: '#10b981' }}>✅ Palpitado</span>}
-                  </div>
-
-                  {/* INFO DO JOGO */}
-                  <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#888', fontSize: '0.8rem' }}>
-                    <span style={{ fontWeight: 'bold', color: '#aaa' }}>{match.group_name || 'Fase Final'}</span> • {match.venue || 'Estádio A Definir'}
-                  </div>
-
-                  {/* PLACARES */}
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2rem' }}>
-                    
-                    {/* Time A */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100px' }}>
-                      {match.flag_a && match.flag_a !== 'un' ? (
-                        <img src={`https://flagcdn.com/32x24/${match.flag_a}.png`} alt={match.team_a} style={{ borderRadius: '4px' }} />
-                      ) : (
-                        <div style={{ width: '32px', height: '24px', backgroundColor: '#2a2d35', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>?</div>
-                      )}
-                      <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>{match.team_a}</span>
-                    </div>
-
-                    {/* Controles Time A */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', -1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>-</button>
-                      <div style={{ width: '40px', height: '40px', backgroundColor: '#111315', borderRadius: '8px', border: '1px solid #2a2d35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                        {inputScores[match.id]?.a ?? '-'}
-                      </div>
-                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', 1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>+</button>
-                    </div>
-
-                    <span style={{ color: '#555', fontWeight: 'bold' }}>X</span>
-
-                    {/* Controles Time B */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', -1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>-</button>
-                      <div style={{ width: '40px', height: '40px', backgroundColor: '#111315', borderRadius: '8px', border: '1px solid #2a2d35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                        {inputScores[match.id]?.b ?? '-'}
-                      </div>
-                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', 1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>+</button>
-                    </div>
-
-                    {/* Time B */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100px' }}>
-                      {match.flag_b && match.flag_b !== 'un' ? (
-                        <img src={`https://flagcdn.com/32x24/${match.flag_b}.png`} alt={match.team_b} style={{ borderRadius: '4px' }} />
-                      ) : (
-                        <div style={{ width: '32px', height: '24px', backgroundColor: '#2a2d35', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>?</div>
-                      )}
-                      <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>{match.team_b}</span>
-                    </div>
-
-                  </div>
-
-                  {/* Botão Salvar */}
-                  {!locked && (
-                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', flexDirection: 'column', alignItems: 'center' }}>
-                      <button 
-                        onClick={() => handleSaveGuess(match.id)}
-                        style={{ padding: '0.6rem 2rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', width: '100%', maxWidth: '300px' }}
-                      >
-                        {myGuess ? 'Atualizar Palpite' : 'Confirmar Palpite'}
-                      </button>
-                      {message[match.id] && (
-                        <span style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: message[match.id].includes('Erro') || message[match.id].includes('bloqueado') ? '#ef4444' : '#10b981' }}>
-                          {message[match.id]}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Resultado Real (se finalizado) */}
-                  {match.status === 'finished' && (
-                    <div style={{ marginTop: '1.5rem', backgroundColor: '#111315', padding: '1rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #2a2d35' }}>
-                      <p style={{ margin: 0, fontSize: '0.9rem', color: '#aaa' }}>Resultado Oficial: <strong>{match.score_a} x {match.score_b}</strong></p>
-                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: '#10b981', fontWeight: 'bold' }}>Você ganhou +{myGuess?.points_earned || 0} pontos</p>
-                    </div>
-                  )}
-
+            {/* BARRA DE PROGRESSO */}
+            <div style={{ backgroundColor: '#fff', padding: '1rem', borderRadius: '12px', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+              <span style={{ fontSize: '0.9rem', color: '#666', fontWeight: 'bold' }}>{guesses.length} de {matches.length} palpites feitos</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '50%' }}>
+                <div style={{ flex: 1, height: '10px', backgroundColor: '#e2e8f0', borderRadius: '5px', overflow: 'hidden' }}>
+                  <div style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: '#2C67EA' }}></div>
                 </div>
-              );
-            })}
-          </div>
+                <span style={{ fontSize: '0.9rem', color: '#2C67EA', fontWeight: 'bold' }}>{progressPercent}%</span>
+              </div>
+            </div>
 
-        </section>
-
-        {/* LADO DIREITO: RANKING (30%) */}
-        <aside style={{ flex: '1 1 300px', maxWidth: '400px' }}>
-          <div style={{ backgroundColor: '#181a1f', borderRadius: '12px', padding: '1.5rem', border: '1px solid #2a2d35', position: 'sticky', top: '2rem' }}>
-            <h2 style={{ fontSize: '1.2rem', margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              🏆 Ranking ao Vivo
-            </h2>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {topUsers.map((user, index) => {
-                let icon = '🏅';
-                let color = '#888';
-                if (index === 0) { icon = '🏆'; color = '#eab308'; }
-                else if (index === 1) { icon = '🥈'; color = '#cbd5e1'; }
-                else if (index === 2) { icon = '🥉'; color = '#b45309'; }
-
-                const isMe = user.id === profile?.id;
+            {/* LISTA DE JOGOS DO DIA */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {filteredMatches.length === 0 ? (
+                <p style={{ color: '#888', textAlign: 'center' }}>Nenhum jogo neste dia.</p>
+              ) : filteredMatches.map(match => {
+                const locked = isLocked(match.match_date) || match.status === 'finished';
+                const myGuess = guesses.find(g => g.match_id === match.id);
 
                 return (
-                  <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.8rem', backgroundColor: isMe ? '#10b98115' : '#111315', borderRadius: '8px', border: isMe ? '1px solid #10b98150' : '1px solid #2a2d35' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <span style={{ fontSize: '1.2rem' }}>{icon}</span>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: isMe ? '#10b981' : '#fff' }}>
-                          {user.name} {isMe && <span style={{ fontSize: '0.6rem', backgroundColor: '#10b981', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Você</span>}
+                  <div key={match.id} style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #eee' }}>
+                    
+                    {/* BADGES SUPERIORES */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {!myGuess && !locked && (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.3rem 0.8rem', borderRadius: '20px', border: '1px solid #eab308', color: '#b45309', backgroundColor: '#fefce8' }}>
+                            ⚠️ Sem palpite
+                          </span>
+                        )}
+                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.3rem 0.8rem', borderRadius: '20px', border: locked ? '1px solid #ef4444' : '1px solid #2C67EA', color: locked ? '#ef4444' : '#2C67EA', backgroundColor: locked ? '#fef2f2' : '#eff6ff' }}>
+                          {locked ? '🔒 Encerrado' : `🕒 ${calculateDaysLeft(match.match_date)}`}
                         </span>
-                        <span style={{ fontSize: '0.7rem', color: '#666' }}>{user.exact_scores} cravadas</span>
                       </div>
+                      {myGuess && <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.3rem 0.8rem', borderRadius: '20px', backgroundColor: '#10b981', color: '#fff' }}>✅ Palpitado</span>}
                     </div>
-                    <span style={{ fontSize: '1.1rem', fontWeight: '900', color }}>{user.points}</span>
+
+                    {/* INFO DO JOGO */}
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#0F1849', fontSize: '0.85rem' }}>
+                      <span style={{ fontWeight: '900' }}>{match.group_name || 'Fase Final'}</span> • {match.venue || 'Estádio A Definir'}
+                    </div>
+
+                    {/* PLACARES */}
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', flexWrap: 'nowrap' }}>
+                      
+                      {/* Time A */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                        {match.flag_a && match.flag_a !== 'un' ? (
+                          <img src={`https://flagcdn.com/w40/${match.flag_a}.png`} alt={match.team_a} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        ) : (
+                          <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
+                        )}
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{match.team_a}</span>
+                      </div>
+
+                      {/* Controles Time A */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', -1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>-</button>
+                        <div style={{ width: '45px', height: '45px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 'bold', color: '#0F1849' }}>
+                          {inputScores[match.id]?.a ?? '-'}
+                        </div>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', 1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>+</button>
+                      </div>
+
+                      <span style={{ color: '#aaa', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 0.5rem' }}>X</span>
+
+                      {/* Controles Time B */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', -1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>-</button>
+                        <div style={{ width: '45px', height: '45px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 'bold', color: '#0F1849' }}>
+                          {inputScores[match.id]?.b ?? '-'}
+                        </div>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', 1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>+</button>
+                      </div>
+
+                      {/* Time B */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                        {match.flag_b && match.flag_b !== 'un' ? (
+                          <img src={`https://flagcdn.com/w40/${match.flag_b}.png`} alt={match.team_b} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        ) : (
+                          <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
+                        )}
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{match.team_b}</span>
+                      </div>
+
+                    </div>
+
+                    {/* Botão Salvar */}
+                    {!locked && (
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem', flexDirection: 'column', alignItems: 'center' }}>
+                        <button 
+                          onClick={() => handleSaveGuess(match.id)}
+                          style={{ padding: '0.8rem 2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', width: '100%', maxWidth: '300px', boxShadow: '0 4px 10px rgba(44, 103, 234, 0.3)' }}
+                        >
+                          {myGuess ? 'Atualizar Palpite' : 'Confirmar Palpite'}
+                        </button>
+                        {message[match.id] && (
+                          <span style={{ marginTop: '0.5rem', fontSize: '0.85rem', fontWeight: 'bold', color: message[match.id].includes('Erro') || message[match.id].includes('bloqueado') ? '#ef4444' : '#10b981' }}>
+                            {message[match.id]}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Resultado Real */}
+                    {match.status === 'finished' && (
+                      <div style={{ marginTop: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>Resultado Oficial: <strong style={{ color: '#0F1849' }}>{match.score_a} x {match.score_b}</strong></p>
+                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: '#10b981', fontWeight: 'bold' }}>Você ganhou +{myGuess?.points_earned || 0} pontos</p>
+                      </div>
+                    )}
+
                   </div>
                 );
               })}
             </div>
-          </div>
-        </aside>
+
+          </section>
+
+          {/* LADO DIREITO: RANKING */}
+          <aside style={{ flex: '1 1 300px', maxWidth: '400px' }}>
+            <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #eee', position: 'sticky', top: '2rem' }}>
+              <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0', color: '#0F1849', borderBottom: '2px solid #f0f4f8', paddingBottom: '0.5rem' }}>
+                🏆 Ranking ao Vivo
+              </h2>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                {topUsers.map((user, index) => {
+                  let icon = '🏅';
+                  let color = '#64748b';
+                  if (index === 0) { icon = '🏆'; color = '#eab308'; }
+                  else if (index === 1) { icon = '🥈'; color = '#94a3b8'; }
+                  else if (index === 2) { icon = '🥉'; color = '#b45309'; }
+
+                  const isMe = user.id === profile?.id;
+
+                  return (
+                    <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', backgroundColor: isMe ? '#eff6ff' : '#f8fafc', borderRadius: '12px', border: isMe ? '2px solid #2C67EA' : '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.95rem', fontWeight: '900', color: '#0F1849' }}>
+                            {user.name} {isMe && <span style={{ fontSize: '0.65rem', backgroundColor: '#2C67EA', color: '#fff', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem', verticalAlign: 'middle' }}>Você</span>}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{user.exact_scores} cravadas</span>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '1.2rem', fontWeight: '900', color }}>{user.points}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
+        </div>
 
       </main>
     </div>
