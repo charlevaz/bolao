@@ -172,16 +172,16 @@ export default function AdminPanel() {
   };
 
   const handleSyncApi = async () => {
-    const confirmed = window.confirm("Isso vai buscar os 64 jogos do Teste Real (Copa 2022) na API e inserir no sistema. Continuar?");
+    const confirmed = window.confirm("Isso vai buscar todos os 104 jogos oficiais da Copa do Mundo 2026. Continuar?");
     if (!confirmed) return;
     
-    setMatchMessage('Conectando à API da FIFA...');
+    setMatchMessage('Baixando Tabela da Copa 2026...');
     try {
       const res = await fetch('/api/sync-matches');
       const data = await res.json();
       
       if (data.error) {
-        setMatchMessage(`Erro na API: ${data.error}`);
+        setMatchMessage(`Erro: ${data.error}`);
         return;
       }
 
@@ -197,6 +197,15 @@ export default function AdminPanel() {
     } catch (err: any) {
       setMatchMessage(`Erro de conexão: ${err.message}`);
     }
+  };
+
+  const handleClearAll = async () => {
+    const confirmed = window.confirm("CUIDADO: Isso vai excluir TODOS os jogos e palpites do sistema. Tem certeza?");
+    if (!confirmed) return;
+    setMatchMessage('Excluindo banco de dados...');
+    await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    setMatchMessage('Todos os jogos foram apagados!');
+    loadMatches();
   };
 
   const handleFinishMatch = async (matchId: string) => {
@@ -245,11 +254,16 @@ export default function AdminPanel() {
       
       {/* SEÇÃO JOGOS */}
       <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h2 style={{ fontSize: '1.5rem', color: '#0F1849', margin: 0 }}>⚽ Gestão de Jogos</h2>
-          <button onClick={handleSyncApi} style={{ padding: '0.6rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-            🔄 Sincronizar Jogos (API Oficial)
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button onClick={handleSyncApi} style={{ padding: '0.6rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+              🔄 Tabela 2026 Completa
+            </button>
+            <button onClick={handleClearAll} style={{ padding: '0.6rem 1rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+              🗑 Limpar Todos
+            </button>
+          </div>
         </div>
         
         {/* ADD JOGO */}

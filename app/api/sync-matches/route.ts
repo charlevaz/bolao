@@ -1,36 +1,34 @@
 import { NextResponse } from 'next/server';
 
-export async function GET() {
-  const API_KEY = process.env.API_FOOTBALL_KEY;
-  if (!API_KEY) {
-    return NextResponse.json({ error: 'Chave da API não configurada' }, { status: 500 });
-  }
+const flagMap: Record<string, string> = {
+  'Brazil': 'br', 'Argentina': 'ar', 'Mexico': 'mx', 'USA': 'us', 'Canada': 'ca',
+  'France': 'fr', 'England': 'gb-eng', 'Spain': 'es', 'Germany': 'de', 'Portugal': 'pt',
+  'Italy': 'it', 'Netherlands': 'nl', 'Uruguay': 'uy', 'Colombia': 'co', 'Senegal': 'sn',
+  'Morocco': 'ma', 'Japan': 'jp', 'South Korea': 'kr', 'Australia': 'au', 'Croatia': 'hr',
+  'Belgium': 'be', 'Switzerland': 'ch'
+};
 
+export async function GET() {
   try {
-    // Usando season 2022 pois a 2026 ainda não está liberada na versão gratuita
-    const response = await fetch('https://v3.football.api-sports.io/fixtures?league=1&season=2022', {
-      headers: {
-        'x-apisports-key': API_KEY
-      }
-    });
+    const response = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
     
+    if (!response.ok) {
+      return NextResponse.json({ error: 'Falha ao buscar dados do GitHub' }, { status: 400 });
+    }
+
     const data = await response.json();
     
-    if (data.errors && Object.keys(data.errors).length > 0) {
-       return NextResponse.json({ error: Object.values(data.errors)[0] }, { status: 400 });
+    if (!data.matches || data.matches.length === 0) {
+      return NextResponse.json({ error: 'Nenhum jogo encontrado no JSON.' }, { status: 404 });
     }
 
-    if (!data.response || data.response.length === 0) {
-      return NextResponse.json({ error: 'Nenhum jogo encontrado na API.' }, { status: 404 });
-    }
-
-    // Mapear os 64 jogos para o formato do nosso banco de dados
-    const matches = data.response.map((item: any) => ({
-      team_a: item.teams.home.name,
-      team_b: item.teams.away.name,
-      flag_a: item.teams.home.logo,
-      flag_b: item.teams.away.logo,
-      match_date: item.fixture.date,
+    // Mapear os 104 jogos para o formato do nosso banco de dados
+    const matches = data.matches.map((item: any) => ({
+      team_a: item.team1,
+      team_b: item.team2,
+      flag_a: flagMap[item.team1] || 'un',
+      flag_b: flagMap[item.team2] || 'un',
+      match_date: new Date(`${item.date}T${item.time.split(' ')[0]}:00-06:00`).toISOString(),
       status: 'pending' // Mantemos como pending para que o admin possa testar e encerrar
     }));
 
