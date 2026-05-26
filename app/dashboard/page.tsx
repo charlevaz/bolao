@@ -414,7 +414,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* PLACARES */}
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', flexWrap: 'nowrap' }}>
+                    <div className="match-score-row">
                       
                       {/* Time A */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
@@ -423,27 +423,27 @@ export default function Dashboard() {
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{nameA}</span>
+                        <span className="match-team-name">{nameA}</span>
                       </div>
 
                       {/* Controles Time A */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', -1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>-</button>
-                        <div style={{ width: '45px', height: '45px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 'bold', color: '#0F1849' }}>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', -1)} className="score-btn" style={{ cursor: locked ? 'not-allowed' : 'pointer' }}>-</button>
+                        <div className="score-input">
                           {inputScores[match.id]?.a ?? '-'}
                         </div>
-                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', 1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>+</button>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', 1)} className="score-btn" style={{ cursor: locked ? 'not-allowed' : 'pointer' }}>+</button>
                       </div>
 
-                      <span style={{ color: '#aaa', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 0.5rem' }}>X</span>
+                      <span style={{ color: '#aaa', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 0.2rem' }}>X</span>
 
                       {/* Controles Time B */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', -1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>-</button>
-                        <div style={{ width: '45px', height: '45px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 'bold', color: '#0F1849' }}>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', -1)} className="score-btn" style={{ cursor: locked ? 'not-allowed' : 'pointer' }}>-</button>
+                        <div className="score-input">
                           {inputScores[match.id]?.b ?? '-'}
                         </div>
-                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', 1)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #ccc', backgroundColor: '#f8fafc', color: '#333', cursor: locked ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>+</button>
+                        <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', 1)} className="score-btn" style={{ cursor: locked ? 'not-allowed' : 'pointer' }}>+</button>
                       </div>
 
                       {/* Time B */}
@@ -453,7 +453,7 @@ export default function Dashboard() {
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{nameB}</span>
+                        <span className="match-team-name">{nameB}</span>
                       </div>
 
                     </div>
