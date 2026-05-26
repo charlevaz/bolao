@@ -380,6 +380,16 @@ export default function Dashboard() {
                 const locked = isLocked(match.match_date) || match.status === 'finished';
                 const myGuess = guesses.find(g => g.match_id === match.id);
 
+                // Helper para bandeiras e traduções
+                const transA = translations[match.team_a];
+                const transB = translations[match.team_b];
+                
+                const flagA = (transA?.flag_code && transA.flag_code !== 'un') ? transA.flag_code : (match.flag_a !== 'un' ? match.flag_a : null);
+                const flagB = (transB?.flag_code && transB.flag_code !== 'un') ? transB.flag_code : (match.flag_b !== 'un' ? match.flag_b : null);
+                
+                const nameA = transA?.pt_name || match.team_a;
+                const nameB = transB?.pt_name || match.team_b;
+
                 return (
                   <div key={match.id} style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #eee' }}>
                     
@@ -408,12 +418,12 @@ export default function Dashboard() {
                       
                       {/* Time A */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                        {(translations[match.team_a]?.flag_code && translations[match.team_a]?.flag_code !== 'un' ? translations[match.team_a]?.flag_code : match.flag_a) !== 'un' ? (
-                          <img src={`https://flagcdn.com/w40/${translations[match.team_a]?.flag_code && translations[match.team_a]?.flag_code !== 'un' ? translations[match.team_a]?.flag_code : match.flag_a}.png`} alt={translations[match.team_a]?.pt_name || match.team_a} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        {flagA ? (
+                          <img src={`https://flagcdn.com/w40/${flagA}.png`} alt={nameA} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{translations[match.team_a]?.pt_name || match.team_a}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{nameA}</span>
                       </div>
 
                       {/* Controles Time A */}
@@ -438,12 +448,12 @@ export default function Dashboard() {
 
                       {/* Time B */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                        {(translations[match.team_b]?.flag_code && translations[match.team_b]?.flag_code !== 'un' ? translations[match.team_b]?.flag_code : match.flag_b) !== 'un' ? (
-                          <img src={`https://flagcdn.com/w40/${translations[match.team_b]?.flag_code && translations[match.team_b]?.flag_code !== 'un' ? translations[match.team_b]?.flag_code : match.flag_b}.png`} alt={translations[match.team_b]?.pt_name || match.team_b} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        {flagB ? (
+                          <img src={`https://flagcdn.com/w40/${flagB}.png`} alt={nameB} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{translations[match.team_b]?.pt_name || match.team_b}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{nameB}</span>
                       </div>
 
                     </div>
