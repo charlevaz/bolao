@@ -136,6 +136,11 @@ export default function Dashboard() {
     return now > (matchDate - 60 * 60 * 1000);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
   if (loading) {
     return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff' }}>Carregando sua área...</div>;
   }
@@ -150,6 +155,7 @@ export default function Dashboard() {
           <p style={{ color: '#2C67EA', margin: 0, textTransform: 'uppercase', fontSize: '0.9rem', fontWeight: 'bold' }}>
             Grupo: {profile?.user_group}
           </p>
+          <button onClick={handleLogout} style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.8rem', padding: 0 }}>Sair da conta</button>
         </div>
         
         {profile?.role === 'admin' && (
