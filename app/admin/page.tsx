@@ -476,10 +476,10 @@ export default function AdminPanel() {
             <h3 style={{ color: '#666', marginBottom: '1rem' }}>E-mails Autorizados ({allowedEmails.length})</h3>
             <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
               {allowedEmails.map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0' }}>
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
                   <div>
-                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.email}</span>
-                    <br /><span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase' }}>{item.user_group}</span>
+                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#0F1849' }}>{item.email}</span>
+                    <br /><span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>{item.user_group}</span>
                   </div>
                   <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
                 </div>

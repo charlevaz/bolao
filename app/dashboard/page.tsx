@@ -31,6 +31,9 @@ export default function Dashboard() {
   // Modal de Regras
   const [showRulesModal, setShowRulesModal] = useState(false);
 
+  // Fases liberadas pelo admin
+  const [phaseSettings, setPhaseSettings] = useState<Record<string, boolean>>({});
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -130,6 +133,14 @@ export default function Dashboard() {
         });
         setTranslations(tMap);
       }
+
+      // 6. Carregar configurações de fases
+      const { data: phasesData } = await supabase.from('phase_settings').select('*');
+      if (phasesData) {
+        const pMap: any = {};
+        phasesData.forEach((p: any) => { pMap[p.phase_key] = p.is_open; });
+        setPhaseSettings(pMap);
+      }
       
       setLoading(false);
     }
@@ -204,6 +215,25 @@ export default function Dashboard() {
     const matchDate = new Date(dateStr).getTime();
     const now = new Date().getTime();
     return now > (matchDate - 60 * 60 * 1000); // 1 hora
+  };
+
+  // Detecta se o jogo é de fase eliminatória (não é fase de grupo)
+  const getMatchPhaseKey = (groupName: string): string | null => {
+    if (!groupName) return null;
+    const g = groupName.toLowerCase();
+    if (g.startsWith('group') || g.startsWith('grupo')) return null; // fase de grupos = sempre aberta
+    if (g.includes('round of 32') || g.includes('oitavas')) return 'round_of_32';
+    if (g.includes('round of 16') || g.includes('quartas')) return 'round_of_16';
+    if (g.includes('quarter') || g.includes('semi')) return 'quarter';
+    if (g.includes('semi') || g.includes('final') && g.includes('3')) return 'semi';
+    if (g.includes('final')) return 'final';
+    return 'final'; // qualquer fase não reconhecida = trata como eliminatória bloqueada
+  };
+
+  const isPhaseBlocked = (match: any): boolean => {
+    const phaseKey = getMatchPhaseKey(match.group_name || '');
+    if (!phaseKey) return false; // fase de grupos: nunca bloqueia
+    return !(phaseSettings[phaseKey] === true); // bloqueia se não estiver explicitamente aberta
   };
 
   const calculateDaysLeft = (dateStr: string) => {
@@ -386,6 +416,7 @@ export default function Dashboard() {
                 <p style={{ color: '#888', textAlign: 'center' }}>Nenhum jogo neste dia.</p>
               ) : filteredMatches.map(match => {
                 const locked = isLocked(match.match_date) || match.status === 'finished';
+                const phaseBlocked = isPhaseBlocked(match);
                 const myGuess = guesses.find(g => g.match_id === match.id);
 
                 // Helper para bandeiras e traduções
@@ -403,8 +434,13 @@ export default function Dashboard() {
                     
                     {/* BADGES SUPERIORES */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        {!myGuess && !locked && (
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {phaseBlocked && (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.3rem 0.8rem', borderRadius: '20px', border: '1px solid #7c3aed', color: '#7c3aed', backgroundColor: '#f5f3ff' }}>
+                            🔒 Fase não liberada
+                          </span>
+                        )}
+                        {!myGuess && !locked && !phaseBlocked && (
                           <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.3rem 0.8rem', borderRadius: '20px', border: '1px solid #eab308', color: '#b45309', backgroundColor: '#fefce8' }}>
                             ⚠️ Sem palpite
                           </span>
@@ -467,7 +503,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Botão Salvar */}
-                    {!locked && (
+                    {!locked && !phaseBlocked && (
                       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem', flexDirection: 'column', alignItems: 'center' }}>
                         <button 
                           onClick={() => handleSaveGuess(match.id)}
