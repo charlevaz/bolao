@@ -28,6 +28,9 @@ export default function Dashboard() {
   // Dicionário de Traduções
   const [translations, setTranslations] = useState<Record<string, {pt_name: string, flag_code: string}>>({});
 
+  // Modal de Regras
+  const [showRulesModal, setShowRulesModal] = useState(false);
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -249,18 +252,76 @@ export default function Dashboard() {
         </div>
       )}
 
+      {showRulesModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
+          <div style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative' }}>
+            <button onClick={() => setShowRulesModal(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#888' }}>×</button>
+            
+            <h2 style={{ color: '#0F1849', marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>⚽🏆 Regras e Prêmios 🏆⚽</h2>
+            <p style={{ color: '#333', fontSize: '0.95rem', lineHeight: '1.5', textAlign: 'center' }}>
+              O Bolão da Copa chegou na <strong>EntreGô Sumarezinho</strong>! Agora cada jogo pode valer pontos, prêmios e muita disputa no ranking! 👀🔥
+            </p>
+            
+            <div style={{ backgroundColor: '#eff6ff', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', borderLeft: '4px solid #2C67EA' }}>
+              <h3 style={{ color: '#0F1849', margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>🎯 Sistema de Pontuação</h3>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#333', fontSize: '0.95rem' }}>
+                <li style={{ marginBottom: '0.3rem' }}><strong>✅ +10 pontos:</strong> Acertou o placar exato</li>
+                <li style={{ marginBottom: '0.3rem' }}><strong>✅ +3 pontos:</strong> Acertou apenas o vencedor</li>
+                <li style={{ marginBottom: '0.3rem' }}><strong>✅ +3 pontos:</strong> Acertou que terminaria empatado</li>
+                <li><strong>✅ +1 ponto:</strong> Acertou a quantidade de gols de uma equipe</li>
+              </ul>
+            </div>
+
+            <div style={{ backgroundColor: '#fefce8', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', borderLeft: '4px solid #eab308' }}>
+              <h3 style={{ color: '#b45309', margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>🏆 Premiações (Top 50)</h3>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#333', fontSize: '0.95rem' }}>
+                <li style={{ marginBottom: '0.3rem' }}>🥇 <strong>1º lugar:</strong> R$ 1.000,00</li>
+                <li style={{ marginBottom: '0.3rem' }}>🥈 <strong>2º lugar:</strong> R$ 500,00</li>
+                <li style={{ marginBottom: '0.3rem' }}>🥉 <strong>3º lugar:</strong> R$ 300,00</li>
+                <li style={{ marginBottom: '0.3rem' }}>🏅 <strong>4º ao 10º:</strong> Jaqueta Reforçada</li>
+                <li style={{ marginBottom: '0.3rem' }}>🏅 <strong>11º ao 20º:</strong> Jaqueta Corta Vento</li>
+                <li style={{ marginBottom: '0.3rem' }}>🏅 <strong>21º ao 30º:</strong> Capa de Chuva Oficial</li>
+                <li style={{ marginBottom: '0.3rem' }}>🏅 <strong>31º ao 40º:</strong> Camiseta</li>
+                <li>🏅 <strong>41º ao 50º:</strong> Bag</li>
+              </ul>
+            </div>
+
+            <h3 style={{ color: '#0F1849', margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>⚠️ Regras Gerais</h3>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#666', fontSize: '0.9rem', lineHeight: '1.5' }}>
+              <li>Apenas entregadores ativos da EntreGô Sumarezinho podem participar.</li>
+              <li>Será permitido apenas 1 palpite por jogo por CPF.</li>
+              <li>Os palpites devem ser enviados antes do início da partida (1h antes).</li>
+              <li>Não será permitido alterar palpites após o fechamento.</li>
+              <li>Válido durante a Copa 2026.</li>
+            </ul>
+
+            <h3 style={{ color: '#0F1849', margin: '1.5rem 0 0.5rem 0', fontSize: '1.1rem' }}>⚖️ Critérios de Desempate</h3>
+            <ol style={{ margin: 0, paddingLeft: '1.2rem', color: '#666', fontSize: '0.9rem' }}>
+              <li>Maior número de placares exatos</li>
+              <li>Maior número de vencedores acertados</li>
+              <li>Maior número de participações</li>
+            </ol>
+            
+            <button onClick={() => setShowRulesModal(false)} style={{ width: '100%', marginTop: '1.5rem', padding: '1rem', backgroundColor: '#0F1849', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+              Entendi, vamos jogar!
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* HEADER TOP */}
-      <header style={{ backgroundColor: '#0F1849', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+      <header style={{ backgroundColor: '#0F1849', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#2C67EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>
             {profile?.name?.charAt(0).toUpperCase()}
           </div>
           <div>
             <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>{profile?.name}</h1>
-            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>{profile?.points} pts • {profile?.exact_scores} cravadas</p>
+            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>{profile?.points} pts • {profile?.exact_scores} Placares Exatos</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button onClick={() => setShowRulesModal(true)} style={{ padding: '0.4rem 0.8rem', backgroundColor: 'transparent', border: '1px solid #fff', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>Regras e Prêmios</button>
           {profile?.role === 'admin' && (
             <Link href="/admin" style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', textDecoration: 'none' }}>Admin</Link>
           )}
@@ -444,7 +505,7 @@ export default function Dashboard() {
                           <span style={{ fontSize: '0.95rem', fontWeight: '900', color: '#0F1849' }}>
                             {user.name} {isMe && <span style={{ fontSize: '0.65rem', backgroundColor: '#2C67EA', color: '#fff', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem', verticalAlign: 'middle' }}>Você</span>}
                           </span>
-                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{user.exact_scores} cravadas</span>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{user.exact_scores} Placares Exatos</span>
                         </div>
                       </div>
                       <span style={{ fontSize: '1.2rem', fontWeight: '900', color }}>{user.points}</span>

@@ -400,7 +400,7 @@ export default function AdminPanel() {
                       value={t.pt_name} 
                       onChange={(e) => {
                         const newArr = [...translations];
-                        newArr[index].pt_name = e.target.value;
+                        newArr[index] = { ...newArr[index], pt_name: e.target.value };
                         setTranslations(newArr);
                       }}
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
@@ -413,7 +413,7 @@ export default function AdminPanel() {
                       value={t.flag_code} 
                       onChange={(e) => {
                         const newArr = [...translations];
-                        newArr[index].flag_code = e.target.value.toLowerCase();
+                        newArr[index] = { ...newArr[index], flag_code: e.target.value.toLowerCase() };
                         setTranslations(newArr);
                       }}
                       style={{ width: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center' }}
