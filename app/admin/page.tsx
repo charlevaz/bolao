@@ -269,14 +269,26 @@ export default function AdminPanel() {
       `);
       if (error) { setMatchMessage(`Erro: ${error.message}`); return; }
       if (!data || data.length === 0) { setMatchMessage('Nenhum palpite ainda.'); return; }
-      const headers = ['Nome', 'E-mail', 'Grupo', 'Data do Jogo', 'Jogo', 'Palpite A', 'Palpite B', 'Placar Real', 'Pontos', 'Data/Hora do Palpite'];
+
+      const getTipoPonto = (g: any) => {
+        if (!g.points_earned || g.points_earned === 0) return 'Sem pontos';
+        if (g.points_earned === 10) return 'Placar Exato';
+        if (g.points_earned === 3) {
+          if (g.guess_score_a === g.guess_score_b) return 'Empate Acertado';
+          return 'Vencedor Acertado';
+        }
+        if (g.points_earned === 1) return 'Gol Isolado';
+        return `+${g.points_earned}`;
+      };
+
+      const headers = ['Nome', 'E-mail', 'Grupo', 'Data do Jogo', 'Jogo', 'Palpite A', 'Palpite B', 'Placar Real', 'Pontos', 'Tipo de Ponto', 'Data/Hora do Palpite'];
       const rows = data.map((g: any) => [
         `"${g.profiles?.name || ''}"`, `"${g.profiles?.email || ''}"`, `"${g.profiles?.user_group || ''}"`,
         `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR') : ''}"`,
         `"${g.matches?.team_a} x ${g.matches?.team_b}"`,
         g.guess_score_a, g.guess_score_b,
         g.matches?.score_a !== null ? `"${g.matches?.score_a} x ${g.matches?.score_b}"` : '"Pendente"',
-        g.points_earned, `"${new Date(g.created_at).toLocaleString('pt-BR')}"`
+        g.points_earned, `"${getTipoPonto(g)}"`, `"${new Date(g.created_at).toLocaleString('pt-BR')}"`
       ]);
       const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -394,10 +406,10 @@ export default function AdminPanel() {
                         <br /><span style={{ fontSize: '0.75rem', color: '#888' }}>{r.email}</span>
                       </td>
                       <td style={{ padding: '0.8rem', textAlign: 'center', fontSize: '1.1rem', fontWeight: '900', color: '#2C67EA' }}>{r.points}</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.exact}</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.winner}</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.tie}</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{r.single_goal}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.exact}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.winner}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.tie}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.single_goal}</td>
                     </tr>
                   ))}
                   {ranking.filter(r => r.user_group === rankingFilter).length === 0 && (
