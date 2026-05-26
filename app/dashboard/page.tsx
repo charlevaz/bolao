@@ -25,6 +25,9 @@ export default function Dashboard() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [newName, setNewName] = useState('');
 
+  // Dicionário de Traduções
+  const [translations, setTranslations] = useState<Record<string, {pt_name: string, flag_code: string}>>({});
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -112,6 +115,16 @@ export default function Dashboard() {
           initialInputs[g.match_id] = { a: g.guess_score_a, b: g.guess_score_b };
         });
         setInputScores(initialInputs);
+      }
+
+      // 5. Carregar Dicionário de Traduções
+      const { data: transData } = await supabase.from('team_translations').select('*');
+      if (transData) {
+        const tMap: any = {};
+        transData.forEach(t => {
+          tMap[t.api_name] = { pt_name: t.pt_name, flag_code: t.flag_code };
+        });
+        setTranslations(tMap);
       }
       
       setLoading(false);
@@ -334,12 +347,12 @@ export default function Dashboard() {
                       
                       {/* Time A */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                        {match.flag_a && match.flag_a !== 'un' ? (
-                          <img src={`https://flagcdn.com/w40/${match.flag_a}.png`} alt={match.team_a} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        {(translations[match.team_a]?.flag_code || match.flag_a) !== 'un' ? (
+                          <img src={`https://flagcdn.com/w40/${translations[match.team_a]?.flag_code || match.flag_a}.png`} alt={translations[match.team_a]?.pt_name || match.team_a} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{match.team_a}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{translations[match.team_a]?.pt_name || match.team_a}</span>
                       </div>
 
                       {/* Controles Time A */}
@@ -364,12 +377,12 @@ export default function Dashboard() {
 
                       {/* Time B */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                        {match.flag_b && match.flag_b !== 'un' ? (
-                          <img src={`https://flagcdn.com/w40/${match.flag_b}.png`} alt={match.team_b} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        {(translations[match.team_b]?.flag_code || match.flag_b) !== 'un' ? (
+                          <img src={`https://flagcdn.com/w40/${translations[match.team_b]?.flag_code || match.flag_b}.png`} alt={translations[match.team_b]?.pt_name || match.team_b} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{match.team_b}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', color: '#0F1849' }}>{translations[match.team_b]?.pt_name || match.team_b}</span>
                       </div>
 
                     </div>

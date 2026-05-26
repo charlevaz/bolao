@@ -11,6 +11,7 @@ export default function AdminPanel() {
   const [message, setMessage] = useState('');
   const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [translations, setTranslations] = useState<any[]>([]);
   
   // CSV Upload State
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -19,8 +20,8 @@ export default function AdminPanel() {
   // Match Management State
   const [teamA, setTeamA] = useState('');
   const [teamB, setTeamB] = useState('');
-  const [flagA, setFlagA] = useState('br');
-  const [flagB, setFlagB] = useState('ar');
+  const [flagA, setFlagA] = useState('un');
+  const [flagB, setFlagB] = useState('un');
   const [matchDate, setMatchDate] = useState('');
   const [matchMessage, setMatchMessage] = useState('');
   
@@ -52,11 +53,17 @@ export default function AdminPanel() {
         loadMatches();
         loadEmails();
         loadProfiles();
+        loadTranslations();
       }
       setChecking(false);
     }
     checkAdmin();
   }, []);
+
+  const loadTranslations = async () => {
+    const { data } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
+    if (data) setTranslations(data);
+  };
 
   const loadProfiles = async () => {
     const { data } = await supabase
@@ -204,13 +211,32 @@ export default function AdminPanel() {
         return;
       }
 
-      setMatchMessage(`Baixando ${data.matches.length} jogos...`);
+      setMatchMessage(`Processando ${data.matches.length} jogos...`);
+      
+      // 1. Extrair seleções únicas para o Dicionário
+      const uniqueTeams = new Set<string>();
+      data.matches.forEach((m: any) => {
+        uniqueTeams.add(m.team_a);
+        uniqueTeams.add(m.team_b);
+      });
+      
+      const newTranslations = Array.from(uniqueTeams).map(team => ({
+        api_name: team,
+        pt_name: team,
+        flag_code: 'un'
+      }));
+
+      // 2. Inserir no Dicionário ignorando os que já existem (upsert na mão)
+      await supabase.from('team_translations').upsert(newTranslations, { onConflict: 'api_name', ignoreDuplicates: true });
+      loadTranslations();
+
+      // 3. Salvar os jogos
       const { error } = await supabase.from('matches').insert(data.matches);
       
       if (error) {
-        setMatchMessage(`Erro ao salvar no banco: ${error.message}`);
+        setMatchMessage(`Erro ao salvar jogos: ${error.message}`);
       } else {
-        setMatchMessage(`🎉 Sincronização concluída! ${data.matches.length} jogos importados com sucesso!`);
+        setMatchMessage(`🎉 Sincronização concluída! ${data.matches.length} jogos e traduções importados com sucesso!`);
         loadMatches();
       }
     } catch (err: any) {
@@ -346,6 +372,75 @@ export default function AdminPanel() {
               <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir">🗑️</button>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* SEÇÃO DICIONÁRIO DE SELEÇÕES */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>🌍 Dicionário de Seleções</h2>
+        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>Sempre que a API baixar os jogos, ela usará este dicionário para traduzir os nomes e exibir as bandeiras corretas.</p>
+        
+        <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead style={{ backgroundColor: '#f9f9fa', position: 'sticky', top: 0 }}>
+              <tr>
+                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Nome API (Original)</th>
+                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Nome em Português</th>
+                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Sigla (2 letras)</th>
+                <th style={{ padding: '0.8rem', borderBottom: '1px solid #ddd', color: '#666' }}>Salvar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {translations.map((t, index) => (
+                <tr key={t.api_name} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '0.8rem', color: '#888', fontWeight: 'bold' }}>{t.api_name}</td>
+                  <td style={{ padding: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      value={t.pt_name} 
+                      onChange={(e) => {
+                        const newArr = [...translations];
+                        newArr[index].pt_name = e.target.value;
+                        setTranslations(newArr);
+                      }}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                  </td>
+                  <td style={{ padding: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      maxLength={6}
+                      value={t.flag_code} 
+                      onChange={(e) => {
+                        const newArr = [...translations];
+                        newArr[index].flag_code = e.target.value.toLowerCase();
+                        setTranslations(newArr);
+                      }}
+                      style={{ width: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center' }}
+                    />
+                  </td>
+                  <td style={{ padding: '0.5rem' }}>
+                    <button 
+                      onClick={async () => {
+                        await supabase.from('team_translations').update({ pt_name: t.pt_name, flag_code: t.flag_code }).eq('api_name', t.api_name);
+                        alert(`Tradução de ${t.api_name} salva!`);
+                      }}
+                      style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      Salvar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {translations.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
+                    Nenhuma seleção encontrada. Sincronize a tabela de jogos para preencher automaticamente.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
