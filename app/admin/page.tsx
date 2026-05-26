@@ -171,6 +171,34 @@ export default function AdminPanel() {
     loadMatches();
   };
 
+  const handleSyncApi = async () => {
+    const confirmed = window.confirm("Isso vai buscar os 64 jogos do Teste Real (Copa 2022) na API e inserir no sistema. Continuar?");
+    if (!confirmed) return;
+    
+    setMatchMessage('Conectando à API da FIFA...');
+    try {
+      const res = await fetch('/api/sync-matches');
+      const data = await res.json();
+      
+      if (data.error) {
+        setMatchMessage(`Erro na API: ${data.error}`);
+        return;
+      }
+
+      setMatchMessage(`Baixando ${data.matches.length} jogos...`);
+      const { error } = await supabase.from('matches').insert(data.matches);
+      
+      if (error) {
+        setMatchMessage(`Erro ao salvar no banco: ${error.message}`);
+      } else {
+        setMatchMessage(`🎉 Sincronização concluída! ${data.matches.length} jogos importados com sucesso!`);
+        loadMatches();
+      }
+    } catch (err: any) {
+      setMatchMessage(`Erro de conexão: ${err.message}`);
+    }
+  };
+
   const handleFinishMatch = async (matchId: string) => {
     const scoreA = scores[matchId]?.a;
     const scoreB = scores[matchId]?.b;
@@ -217,7 +245,12 @@ export default function AdminPanel() {
       
       {/* SEÇÃO JOGOS */}
       <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>⚽ Gestão de Jogos</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.5rem', color: '#0F1849', margin: 0 }}>⚽ Gestão de Jogos</h2>
+          <button onClick={handleSyncApi} style={{ padding: '0.6rem 1rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+            🔄 Sincronizar Jogos (API Oficial)
+          </button>
+        </div>
         
         {/* ADD JOGO */}
         <div style={{ backgroundColor: '#f9f9fa', padding: '1rem', borderRadius: '8px', marginBottom: '2rem' }}>
