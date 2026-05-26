@@ -8,13 +8,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [rankPos, setRankPos] = useState<number | null>(null);
+  const [topUsers, setTopUsers] = useState<any[]>([]);
   
   const [matches, setMatches] = useState<any[]>([]);
   const [guesses, setGuesses] = useState<any[]>([]);
   
-  // Controle de formulários (scores sendo digitados)
-  const [inputScores, setInputScores] = useState<{[key: string]: {a: string, b: string}}>({});
+  // Controle de formulários
+  const [inputScores, setInputScores] = useState<{[key: string]: {a: number | null, b: number | null}}>({});
   const [message, setMessage] = useState<{[key: string]: string}>({});
+
+  // Filtro por dia
+  const [selectedDay, setSelectedDay] = useState<string>('');
+  const [uniqueDays, setUniqueDays] = useState<{date: string, label: string, short: string}[]>([]);
 
   const supabase = createClient();
 
@@ -35,7 +40,7 @@ export default function Dashboard() {
       
       setProfile(profileData);
 
-      // 2. Calcular Posição no Ranking (Dentro do mesmo Grupo)
+      // 2. Carregar Ranking (Top 10 do mesmo grupo)
       if (profileData) {
         const { count } = await supabase
           .from('profiles')
@@ -44,17 +49,49 @@ export default function Dashboard() {
           .gt('points', profileData.points);
           
         setRankPos((count || 0) + 1);
+
+        const { data: topData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_group', profileData.user_group)
+          .order('points', { ascending: false })
+          .limit(10);
+        
+        if (topData) setTopUsers(topData);
       }
 
-      // 3. Carregar Jogos Pendentes e Finalizados
+      // 3. Carregar Jogos
       const { data: matchesData } = await supabase
         .from('matches')
         .select('*')
         .order('match_date', { ascending: true });
         
-      if (matchesData) setMatches(matchesData);
+      if (matchesData && matchesData.length > 0) {
+        setMatches(matchesData);
+        
+        // Extrair dias únicos
+        const daysMap = new Map();
+        const daysFormat: any[] = [];
+        
+        matchesData.forEach(m => {
+          const d = new Date(m.match_date);
+          const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+          if (!daysMap.has(dateStr)) {
+            daysMap.set(dateStr, true);
+            const diasSemana = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+            daysFormat.push({
+              date: dateStr,
+              label: `${d.getDate()} ${d.toLocaleString('pt-BR', {month: 'short'}).toUpperCase()}`,
+              short: diasSemana[d.getDay()]
+            });
+          }
+        });
+        
+        setUniqueDays(daysFormat);
+        if (daysFormat.length > 0) setSelectedDay(daysFormat[0].date);
+      }
 
-      // 4. Carregar Palpites deste Usuário
+      // 4. Carregar Palpites
       const { data: guessesData } = await supabase
         .from('guesses')
         .select('*')
@@ -62,11 +99,9 @@ export default function Dashboard() {
         
       if (guessesData) {
         setGuesses(guessesData);
-        
-        // Preencher inputs com palpites já feitos
         const initialInputs: any = {};
         guessesData.forEach(g => {
-          initialInputs[g.match_id] = { a: String(g.guess_score_a), b: String(g.guess_score_b) };
+          initialInputs[g.match_id] = { a: g.guess_score_a, b: g.guess_score_b };
         });
         setInputScores(initialInputs);
       }
@@ -76,13 +111,22 @@ export default function Dashboard() {
     loadDashboard();
   }, []);
 
+  const handleScoreChange = (matchId: string, team: 'a'|'b', delta: number) => {
+    setInputScores(prev => {
+      const current = prev[matchId] || { a: null, b: null };
+      const currentVal = current[team] ?? 0;
+      const newVal = Math.max(0, currentVal + delta);
+      return { ...prev, [matchId]: { ...current, [team]: newVal } };
+    });
+  };
+
   const handleSaveGuess = async (matchId: string) => {
     if (!profile) return;
     
     const scoreA = inputScores[matchId]?.a;
     const scoreB = inputScores[matchId]?.b;
     
-    if (!scoreA || !scoreB) {
+    if (scoreA === null || scoreA === undefined || scoreB === null || scoreB === undefined) {
       setMessage({...message, [matchId]: 'Preencha os dois gols!'});
       return;
     }
@@ -93,19 +137,17 @@ export default function Dashboard() {
 
     let error;
     if (existingGuess) {
-      // Atualizar palpite
       const res = await supabase.from('guesses').update({
-        guess_score_a: parseInt(scoreA),
-        guess_score_b: parseInt(scoreB)
+        guess_score_a: scoreA,
+        guess_score_b: scoreB
       }).eq('id', existingGuess.id);
       error = res.error;
     } else {
-      // Criar palpite
       const res = await supabase.from('guesses').insert([{
         user_id: profile.id,
         match_id: matchId,
-        guess_score_a: parseInt(scoreA),
-        guess_score_b: parseInt(scoreB)
+        guess_score_a: scoreA,
+        guess_score_b: scoreB
       }]);
       error = res.error;
     }
@@ -117,23 +159,27 @@ export default function Dashboard() {
         setMessage({...message, [matchId]: `Erro: ${error.message}`});
       }
     } else {
-      setMessage({...message, [matchId]: '✅ Palpite Salvo!'});
-      // Atualiza lista local
+      setMessage({...message, [matchId]: '✅ Salvo!'});
       const { data } = await supabase.from('guesses').select('*').eq('user_id', profile.id);
       if (data) setGuesses(data);
-      
-      // Limpa a mensagem de sucesso após 3 segundos
-      setTimeout(() => {
-        setMessage(prev => ({...prev, [matchId]: ''}));
-      }, 3000);
+      setTimeout(() => setMessage(prev => ({...prev, [matchId]: ''})), 2000);
     }
   };
 
   const isLocked = (dateStr: string) => {
     const matchDate = new Date(dateStr).getTime();
     const now = new Date().getTime();
-    // 1 hora de antecedência (em milissegundos)
-    return now > (matchDate - 60 * 60 * 1000);
+    return now > (matchDate - 60 * 60 * 1000); // 1 hora
+  };
+
+  const calculateDaysLeft = (dateStr: string) => {
+    const diff = new Date(dateStr).getTime() - new Date().getTime();
+    if (diff < 0) return 'Encerrado';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    if (days > 0) return `Fecha em ${days} dias`;
+    if (hours > 0) return `Fecha em ${hours} horas`;
+    return 'Fecha em minutos';
   };
 
   const handleLogout = async () => {
@@ -142,149 +188,221 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff' }}>Carregando sua área...</div>;
+    return <div style={{ minHeight: '100vh', backgroundColor: '#111315', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#10b981' }}>Carregando sua área...</div>;
   }
 
+  // Filtrar jogos do dia selecionado
+  const filteredMatches = matches.filter(m => m.match_date.startsWith(selectedDay));
+  const progressPercent = matches.length > 0 ? Math.round((guesses.length / matches.length) * 100) : 0;
+
   return (
-    <div style={{ padding: '1rem', maxWidth: '800px', margin: '0 auto', color: '#333' }}>
+    <div style={{ backgroundColor: '#111315', minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       
-      {/* HEADER DO JOGADOR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.8rem', color: '#fff', margin: 0 }}>Olá, {profile?.name}</h1>
-          <p style={{ color: '#2C67EA', margin: 0, textTransform: 'uppercase', fontSize: '0.9rem', fontWeight: 'bold' }}>
-            Grupo: {profile?.user_group}
-          </p>
-          <button onClick={handleLogout} style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.8rem', padding: 0 }}>Sair da conta</button>
+      {/* HEADER TOP */}
+      <header style={{ backgroundColor: '#181a1f', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a2d35' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#000' }}>
+            {profile?.name?.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>{profile?.name}</h1>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>{profile?.points} pts • {profile?.exact_scores} cravadas</p>
+          </div>
         </div>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {profile?.role === 'admin' && (
+            <Link href="/admin" style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', textDecoration: 'none' }}>Admin</Link>
+          )}
+          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.9rem' }}>Sair</button>
+        </div>
+      </header>
+
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
         
-        {profile?.role === 'admin' && (
-          <Link href="/admin" style={{ padding: '0.6rem 1rem', backgroundColor: '#eab308', color: '#000', borderRadius: '6px', fontWeight: 'bold', textDecoration: 'none' }}>
-            Painel Admin
-          </Link>
-        )}
-      </div>
+        {/* LADO ESQUERDO: PALPITES (70%) */}
+        <section style={{ flex: '1 1 600px' }}>
+          
+          {/* CARROSSEL DE DIAS */}
+          <div style={{ display: 'flex', overflowX: 'auto', gap: '0.5rem', paddingBottom: '1rem', marginBottom: '1rem', scrollbarWidth: 'none' }}>
+            {uniqueDays.map((d) => (
+              <button 
+                key={d.date}
+                onClick={() => setSelectedDay(d.date)}
+                style={{ 
+                  flexShrink: 0,
+                  padding: '0.8rem 1.2rem', 
+                  backgroundColor: selectedDay === d.date ? '#181a1f' : 'transparent', 
+                  border: selectedDay === d.date ? '1px solid #10b981' : '1px solid #2a2d35',
+                  borderRadius: '12px',
+                  color: selectedDay === d.date ? '#10b981' : '#888',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  minWidth: '80px'
+                }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{d.short}</span>
+                <span style={{ fontSize: '1rem', fontWeight: '900', color: selectedDay === d.date ? '#fff' : '#aaa' }}>{d.label}</span>
+              </button>
+            ))}
+          </div>
 
-      {/* PLACAR E RANKING DO JOGADOR */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
-        <div style={{ backgroundColor: '#2C67EA', padding: '1.5rem', borderRadius: '12px', color: '#fff', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.8 }}>Sua Posição</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: '900' }}>{rankPos}º</div>
-          <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>no ranking</div>
-        </div>
-        <div style={{ backgroundColor: '#0F1849', padding: '1.5rem', borderRadius: '12px', color: '#fff', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-          <div style={{ fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.8 }}>Total de Pontos</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#4ade80' }}>{profile?.points}</div>
-          <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>pontos</div>
-        </div>
-        <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', color: '#0F1849', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: '0.9rem', textTransform: 'uppercase', opacity: 0.6, fontWeight: 'bold' }}>Cravadas</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: '900' }}>{profile?.exact_scores}</div>
-          <div style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 'bold' }}>placares exatos</div>
-        </div>
-      </div>
+          {/* BARRA DE PROGRESSO */}
+          <div style={{ backgroundColor: '#181a1f', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.9rem', color: '#aaa' }}>{guesses.length} de {matches.length} palpites feitos</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '50%' }}>
+              <div style={{ flex: 1, height: '8px', backgroundColor: '#2a2d35', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: '#eab308' }}></div>
+              </div>
+              <span style={{ fontSize: '0.8rem', color: '#eab308', fontWeight: 'bold' }}>{progressPercent}%</span>
+            </div>
+          </div>
 
-      {/* LISTA DE JOGOS */}
-      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>
-          Meus Palpites
-        </h2>
-
-        {matches.length === 0 ? (
-          <p style={{ color: '#888', textAlign: 'center', padding: '2rem 0' }}>Nenhum jogo disponível ainda.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {matches.map(match => {
+          {/* LISTA DE JOGOS DO DIA */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {filteredMatches.length === 0 ? (
+              <p style={{ color: '#888', textAlign: 'center' }}>Nenhum jogo neste dia.</p>
+            ) : filteredMatches.map(match => {
               const locked = isLocked(match.match_date) || match.status === 'finished';
               const myGuess = guesses.find(g => g.match_id === match.id);
 
               return (
-                <div key={match.id} style={{ padding: '1rem', border: '1px solid #eee', borderRadius: '8px', backgroundColor: locked ? '#f9f9fa' : '#fff', opacity: locked ? 0.8 : 1 }}>
+                <div key={match.id} style={{ backgroundColor: '#181a1f', borderRadius: '12px', padding: '1.5rem', border: '1px solid #2a2d35' }}>
                   
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#888', marginBottom: '1rem', fontWeight: 'bold' }}>
-                    <span>{new Date(match.match_date).toLocaleString('pt-BR')}</span>
-                    {locked && <span style={{ color: '#ef4444' }}>🔒 FECHADO</span>}
+                  {/* BADGES SUPERIORES */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {!myGuess && !locked && (
+                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '12px', border: '1px solid #eab308', color: '#eab308' }}>
+                          ⚠️ Sem palpite
+                        </span>
+                      )}
+                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '12px', border: locked ? '1px solid #ef4444' : '1px solid #10b981', color: locked ? '#ef4444' : '#10b981' }}>
+                        {locked ? '🔒 Encerrado' : `🕒 ${calculateDaysLeft(match.match_date)}`}
+                      </span>
+                    </div>
+                    {myGuess && <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '12px', backgroundColor: '#10b98120', color: '#10b981' }}>✅ Palpitado</span>}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  {/* INFO DO JOGO */}
+                  <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#888', fontSize: '0.8rem' }}>
+                    <span style={{ fontWeight: 'bold', color: '#aaa' }}>{match.group_name || 'Fase Final'}</span> • {match.venue || 'Estádio A Definir'}
+                  </div>
+
+                  {/* PLACARES */}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2rem' }}>
                     
                     {/* Time A */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '120px', justifyContent: 'flex-end' }}>
-                      <span style={{ fontWeight: 'bold', textAlign: 'right' }}>{match.team_a}</span>
-                      {match.flag_a && match.flag_a.startsWith('http') ? (
-                         <img src={match.flag_a} alt={match.team_a} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                      ) : match.flag_a && (
-                         <img src={`https://flagcdn.com/24x18/${match.flag_a}.png`} alt={match.team_a} />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100px' }}>
+                      {match.flag_a && match.flag_a !== 'un' ? (
+                        <img src={`https://flagcdn.com/32x24/${match.flag_a}.png`} alt={match.team_a} style={{ borderRadius: '4px' }} />
+                      ) : (
+                        <div style={{ width: '32px', height: '24px', backgroundColor: '#2a2d35', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>?</div>
                       )}
+                      <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>{match.team_a}</span>
                     </div>
-                    
-                    {/* Placar Input */}
+
+                    {/* Controles Time A */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={inputScores[match.id]?.a ?? ''}
-                        onChange={(e) => setInputScores({...inputScores, [match.id]: {...inputScores[match.id], a: e.target.value}})}
-                        disabled={locked}
-                        style={{ width: '50px', padding: '0.8rem 0.5rem', textAlign: 'center', borderRadius: '6px', border: '2px solid #ccc', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: locked ? '#eee' : '#fff' }} 
-                      />
-                      <span style={{ color: '#888', fontWeight: 'bold' }}>X</span>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={inputScores[match.id]?.b ?? ''}
-                        onChange={(e) => setInputScores({...inputScores, [match.id]: {...inputScores[match.id], b: e.target.value}})}
-                        disabled={locked}
-                        style={{ width: '50px', padding: '0.8rem 0.5rem', textAlign: 'center', borderRadius: '6px', border: '2px solid #ccc', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: locked ? '#eee' : '#fff' }} 
-                      />
+                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', -1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>-</button>
+                      <div style={{ width: '40px', height: '40px', backgroundColor: '#111315', borderRadius: '8px', border: '1px solid #2a2d35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                        {inputScores[match.id]?.a ?? '-'}
+                      </div>
+                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'a', 1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>+</button>
                     </div>
-                    
+
+                    <span style={{ color: '#555', fontWeight: 'bold' }}>X</span>
+
+                    {/* Controles Time B */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', -1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>-</button>
+                      <div style={{ width: '40px', height: '40px', backgroundColor: '#111315', borderRadius: '8px', border: '1px solid #2a2d35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                        {inputScores[match.id]?.b ?? '-'}
+                      </div>
+                      <button disabled={locked} onClick={() => handleScoreChange(match.id, 'b', 1)} style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid #2a2d35', backgroundColor: '#111315', color: '#fff', cursor: locked ? 'not-allowed' : 'pointer' }}>+</button>
+                    </div>
+
                     {/* Time B */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '120px', justifyContent: 'flex-start' }}>
-                      {match.flag_b && match.flag_b.startsWith('http') ? (
-                         <img src={match.flag_b} alt={match.team_b} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                      ) : match.flag_b && (
-                         <img src={`https://flagcdn.com/24x18/${match.flag_b}.png`} alt={match.team_b} />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100px' }}>
+                      {match.flag_b && match.flag_b !== 'un' ? (
+                        <img src={`https://flagcdn.com/32x24/${match.flag_b}.png`} alt={match.team_b} style={{ borderRadius: '4px' }} />
+                      ) : (
+                        <div style={{ width: '32px', height: '24px', backgroundColor: '#2a2d35', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>?</div>
                       )}
-                      <span style={{ fontWeight: 'bold', textAlign: 'left' }}>{match.team_b}</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>{match.team_b}</span>
                     </div>
 
                   </div>
 
-                  {/* Área do Botão e Mensagens */}
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem', flexDirection: 'column', alignItems: 'center' }}>
-                    {!locked && (
+                  {/* Botão Salvar */}
+                  {!locked && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', flexDirection: 'column', alignItems: 'center' }}>
                       <button 
                         onClick={() => handleSaveGuess(match.id)}
-                        style={{ padding: '0.6rem 2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                        style={{ padding: '0.6rem 2rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', width: '100%', maxWidth: '300px' }}
                       >
-                        {myGuess ? 'Atualizar Palpite' : 'Enviar Palpite'}
+                        {myGuess ? 'Atualizar Palpite' : 'Confirmar Palpite'}
                       </button>
-                    )}
-                    
-                    {message[match.id] && (
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: message[match.id].includes('Erro') || message[match.id].includes('bloqueado') ? '#ef4444' : '#10b981', fontWeight: 'bold' }}>
-                        {message[match.id]}
-                      </div>
-                    )}
+                      {message[match.id] && (
+                        <span style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: message[match.id].includes('Erro') || message[match.id].includes('bloqueado') ? '#ef4444' : '#10b981' }}>
+                          {message[match.id]}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
-                    {/* Exibir o Placar Real e Pontos se finalizado */}
-                    {match.status === 'finished' && (
-                      <div style={{ marginTop: '1rem', backgroundColor: '#0F1849', color: '#fff', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.9rem', textAlign: 'center', width: '100%' }}>
-                        Placar Real: <strong>{match.score_a} x {match.score_b}</strong> <br/>
-                        Você ganhou: <strong style={{ color: '#4ade80' }}>+{myGuess?.points_earned || 0} pontos</strong>
-                      </div>
-                    )}
-
-                  </div>
+                  {/* Resultado Real (se finalizado) */}
+                  {match.status === 'finished' && (
+                    <div style={{ marginTop: '1.5rem', backgroundColor: '#111315', padding: '1rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #2a2d35' }}>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: '#aaa' }}>Resultado Oficial: <strong>{match.score_a} x {match.score_b}</strong></p>
+                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: '#10b981', fontWeight: 'bold' }}>Você ganhou +{myGuess?.points_earned || 0} pontos</p>
+                    </div>
+                  )}
 
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
-      
+
+        </section>
+
+        {/* LADO DIREITO: RANKING (30%) */}
+        <aside style={{ flex: '1 1 300px', maxWidth: '400px' }}>
+          <div style={{ backgroundColor: '#181a1f', borderRadius: '12px', padding: '1.5rem', border: '1px solid #2a2d35', position: 'sticky', top: '2rem' }}>
+            <h2 style={{ fontSize: '1.2rem', margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              🏆 Ranking ao Vivo
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {topUsers.map((user, index) => {
+                let icon = '🏅';
+                let color = '#888';
+                if (index === 0) { icon = '🏆'; color = '#eab308'; }
+                else if (index === 1) { icon = '🥈'; color = '#cbd5e1'; }
+                else if (index === 2) { icon = '🥉'; color = '#b45309'; }
+
+                const isMe = user.id === profile?.id;
+
+                return (
+                  <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.8rem', backgroundColor: isMe ? '#10b98115' : '#111315', borderRadius: '8px', border: isMe ? '1px solid #10b98150' : '1px solid #2a2d35' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: isMe ? '#10b981' : '#fff' }}>
+                          {user.name} {isMe && <span style={{ fontSize: '0.6rem', backgroundColor: '#10b981', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Você</span>}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: '#666' }}>{user.exact_scores} cravadas</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '1.1rem', fontWeight: '900', color }}>{user.points}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+
+      </main>
     </div>
   );
 }
