@@ -5,9 +5,11 @@ import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 
 export default function AdminPanel() {
+  // Emails State
   const [emailToAdd, setEmailToAdd] = useState('');
   const [group, setGroup] = useState('entregador');
   const [message, setMessage] = useState('');
+  const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
   
   // CSV Upload State
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -47,6 +49,7 @@ export default function AdminPanel() {
       if (data?.role === 'admin') {
         setIsAdmin(true);
         loadMatches();
+        loadEmails();
       }
       setChecking(false);
     }
@@ -54,10 +57,9 @@ export default function AdminPanel() {
   }, []);
 
   const loadMatches = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('matches')
       .select('*')
-      .eq('status', 'pending')
       .order('match_date', { ascending: true });
     
     if (data) {
@@ -68,6 +70,14 @@ export default function AdminPanel() {
       });
       setScores(initialScores);
     }
+  };
+
+  const loadEmails = async () => {
+    const { data } = await supabase
+      .from('allowed_emails')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setAllowedEmails(data);
   };
 
   const handleAddEmail = async (e: React.FormEvent) => {
@@ -81,9 +91,18 @@ export default function AdminPanel() {
     if (error) {
       setMessage(`Erro: ${error.message}`);
     } else {
-      setMessage(`E-mail ${emailToAdd} autorizado com sucesso como ${group}!`);
+      setMessage(`E-mail autorizado com sucesso!`);
       setEmailToAdd('');
+      loadEmails();
     }
+  };
+
+  const handleDeleteEmail = async (id: string, email: string) => {
+    const confirmed = window.confirm(`Certeza que deseja remover a autorização de ${email}?`);
+    if (!confirmed) return;
+
+    await supabase.from('allowed_emails').delete().eq('id', id);
+    loadEmails();
   };
 
   const handleCsvUpload = async (e: React.FormEvent) => {
@@ -101,23 +120,21 @@ export default function AdminPanel() {
         const email = parts[0]?.trim();
         let userGroup = parts[1]?.trim().toLowerCase();
         
-        // Tratar caso a planilha não tenha grupo
         if (userGroup !== 'entregador' && userGroup !== 'colaborador') {
-          userGroup = 'colaborador'; // fallback default
+          userGroup = 'colaborador';
         }
 
         return { email, user_group: userGroup };
       }).filter(item => item.email && item.email.includes('@'));
 
-      setCsvMessage(`Planilha processada! Inserindo ${toInsert.length} e-mails...`);
-
       const { error } = await supabase.from('allowed_emails').insert(toInsert);
       
       if (error) {
-        setCsvMessage(`Erro ao inserir lote: ${error.message}`);
+        setCsvMessage(`Erro: ${error.message}`);
       } else {
-        setCsvMessage(`🎉 ${toInsert.length} e-mails cadastrados com sucesso!`);
+        setCsvMessage(`🎉 ${toInsert.length} e-mails cadastrados!`);
         setCsvFile(null);
+        loadEmails();
       }
     };
     reader.readAsText(csvFile);
@@ -125,7 +142,7 @@ export default function AdminPanel() {
 
   const handleAddMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMatchMessage('Salvando jogo...');
+    setMatchMessage('Salvando...');
     
     const { error } = await supabase
       .from('matches')
@@ -141,12 +158,17 @@ export default function AdminPanel() {
     if (error) {
       setMatchMessage(`Erro: ${error.message}`);
     } else {
-      setMatchMessage(`Jogo ${teamA} x ${teamB} cadastrado com sucesso!`);
-      setTeamA('');
-      setTeamB('');
-      setMatchDate('');
+      setMatchMessage(`Jogo cadastrado com sucesso!`);
+      setTeamA(''); setTeamB(''); setMatchDate('');
       loadMatches();
     }
+  };
+
+  const handleDeleteMatch = async (id: string) => {
+    const confirmed = window.confirm("Excluir este jogo permanentemente?");
+    if (!confirmed) return;
+    await supabase.from('matches').delete().eq('id', id);
+    loadMatches();
   };
 
   const handleFinishMatch = async (matchId: string) => {
@@ -158,10 +180,9 @@ export default function AdminPanel() {
       return;
     }
 
-    const confirmAction = window.confirm(`Você tem certeza? Isso vai finalizar o jogo e distribuir os pontos para todos que palpitaram!`);
+    const confirmAction = window.confirm(`Isso vai encerrar o jogo e dar os pontos. Confirmar?`);
     if (!confirmAction) return;
 
-    // Chamar a função SQL (Stored Procedure) que finaliza o jogo e calcula os pontos
     const { error } = await supabase.rpc('finish_match', {
       p_match_id: matchId,
       p_real_score_a: parseInt(scoreA),
@@ -171,7 +192,7 @@ export default function AdminPanel() {
     if (error) {
       alert(`Erro ao finalizar jogo: ${error.message}`);
     } else {
-      alert("Jogo encerrado com sucesso! Os pontos foram distribuídos no Ranking.");
+      alert("Pontos calculados e distribuídos com sucesso!");
       loadMatches();
     }
   };
@@ -189,160 +210,125 @@ export default function AdminPanel() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', color: '#333' }}>
-      <Link href="/" style={{ color: '#2C67EA', marginBottom: '2rem', display: 'inline-block' }}>← Voltar para a Home</Link>
+    <div style={{ padding: '1rem', maxWidth: '800px', margin: '0 auto', color: '#333' }}>
+      <Link href="/" style={{ color: '#2C67EA', marginBottom: '1rem', display: 'inline-block' }}>← Voltar para a Home</Link>
       
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem', color: '#fff' }}>Painel do Administrador</h1>
+      <h1 style={{ fontSize: '2rem', marginBottom: '2rem', color: '#fff' }}>Painel do Administrador</h1>
       
-      {/* SEÇÃO 1: E-MAILS */}
-      <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+      {/* SEÇÃO JOGOS */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>⚽ Gestão de Jogos</h2>
+        
+        {/* ADD JOGO */}
+        <div style={{ backgroundColor: '#f9f9fa', padding: '1rem', borderRadius: '8px', marginBottom: '2rem' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Agendar Nova Partida</h3>
+          <form onSubmit={handleAddMatch} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', alignItems: 'end' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time A</label>
+              <input type="text" value={teamA} onChange={e => setTeamA(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla A (ex: br)</label>
+              <input type="text" value={flagA} onChange={e => setFlagA(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time B</label>
+              <input type="text" value={teamB} onChange={e => setTeamB(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla B (ex: ar)</label>
+              <input type="text" value={flagB} onChange={e => setFlagB(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Data e Hora</label>
+              <input type="datetime-local" value={matchDate} onChange={e => setMatchDate(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+            </div>
+            <button type="submit" style={{ gridColumn: '1 / -1', padding: '0.8rem', backgroundColor: '#0F1849', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar Jogo</button>
+          </form>
+          {matchMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{matchMessage}</div>}
+        </div>
+
+        {/* LISTA JOGOS */}
+        <div>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Partidas Cadastradas</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {matches.map(match => (
+              <div key={match.id} style={{ display: 'flex', flexDirection: 'column', padding: '1rem', border: '1px solid #eee', borderRadius: '8px', position: 'relative' }}>
+                <button onClick={() => handleDeleteMatch(match.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir Jogo">🗑️</button>
+                
+                <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
+                  {new Date(match.match_date).toLocaleString('pt-BR')} | Status: {match.status === 'pending' ? 'Pendente' : 'Encerrado'}
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 'bold' }}>{match.team_a}</span>
+                  {match.status === 'pending' ? (
+                    <>
+                      <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={(e) => setScores({...scores, [match.id]: {...scores[match.id], a: e.target.value}})} style={{ width: '40px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                      <span style={{ color: '#888' }}>X</span>
+                      <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={(e) => setScores({...scores, [match.id]: {...scores[match.id], b: e.target.value}})} style={{ width: '40px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '1.5rem', margin: '0 1rem' }}>{match.score_a} X {match.score_b}</span>
+                  )}
+                  <span style={{ fontWeight: 'bold' }}>{match.team_b}</span>
+                </div>
+
+                {match.status === 'pending' && (
+                  <button onClick={() => handleFinishMatch(match.id)} style={{ marginTop: '1.5rem', padding: '0.6rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    Encerrar e Dar Pontos
+                  </button>
+                )}
+              </div>
+            ))}
+            {matches.length === 0 && <p style={{ color: '#888', fontSize: '0.9rem' }}>Nenhum jogo na lista.</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* SEÇÃO E-MAILS */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>👥 Cadastro de Participantes</h2>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          
-          {/* Unitário */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Adicionar Individual</h3>
-            <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <input 
-                type="email" 
-                placeholder="E-mail"
-                value={emailToAdd}
-                onChange={(e) => setEmailToAdd(e.target.value)}
-                required
-                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              />
-              <select 
-                value={group}
-                onChange={(e) => setGroup(e.target.value)}
-                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Adicionar E-mail</h3>
+            <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <input type="email" placeholder="E-mail" value={emailToAdd} onChange={(e) => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+              <select value={group} onChange={(e) => setGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}>
                 <option value="entregador">Entregador</option>
                 <option value="colaborador">Colaborador</option>
               </select>
-              <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                Autorizar Único
-              </button>
+              <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar Individual</button>
             </form>
             {message && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{message}</div>}
           </div>
 
-          {/* Em Lote (Planilha CSV) */}
-          <div style={{ borderLeft: '1px solid #eee', paddingLeft: '2rem' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Subir Planilha (.csv)</h3>
-            <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
-              Formato: Coluna 1 = E-mail, Coluna 2 = Grupo (entregador ou colaborador). Sem cabeçalho.
-            </p>
-            <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <input 
-                type="file" 
-                accept=".csv"
-                onChange={(e) => setCsvFile(e.target.files ? e.target.files[0] : null)}
-                required
-                style={{ padding: '0.5rem' }}
-              />
+          <div>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Subir CSV</h3>
+            <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files ? e.target.files[0] : null)} required style={{ padding: '0.5rem' }} />
               <button type="submit" disabled={!csvFile} style={{ padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: 'white', border: 'none', borderRadius: '6px', cursor: csvFile ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}>
                 Enviar Planilha
               </button>
             </form>
             {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
           </div>
+        </div>
 
+        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>E-mails Autorizados ({allowedEmails.length})</h3>
+        <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
+          {allowedEmails.map(item => (
+            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #eee' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.email}</span>
+                <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase' }}>{item.user_group}</span>
+              </div>
+              <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Excluir">🗑️</button>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* SEÇÃO 2: JOGOS */}
-      <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F1849', borderBottom: '2px solid #f0f0f0', paddingBottom: '0.5rem' }}>⚽ Gestão de Jogos</h2>
-        
-        {/* Adicionar Jogo */}
-        <div style={{ marginBottom: '3rem', backgroundColor: '#f9f9fa', padding: '1.5rem', borderRadius: '8px' }}>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Agendar Nova Partida</h3>
-          <form onSubmit={handleAddMatch} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time A (Ex: Brasil)</label>
-              <input type="text" value={teamA} onChange={e => setTeamA(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            <div style={{ flex: '0 0 80px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla A</label>
-              <input type="text" placeholder="br" value={flagA} onChange={e => setFlagA(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            
-            <div style={{ padding: '0.8rem', color: '#888' }}>X</div>
-            
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Time B (Ex: Argentina)</label>
-              <input type="text" value={teamB} onChange={e => setTeamB(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-            <div style={{ flex: '0 0 80px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Sigla B</label>
-              <input type="text" placeholder="ar" value={flagB} onChange={e => setFlagB(e.target.value.toLowerCase())} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-
-            <div style={{ flex: '1 1 250px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.3rem' }}>Data e Hora</label>
-              <input type="datetime-local" value={matchDate} onChange={e => setMatchDate(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-            </div>
-
-            <button type="submit" style={{ padding: '0.8rem 1.5rem', backgroundColor: '#0F1849', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-              Salvar
-            </button>
-          </form>
-          {matchMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{matchMessage}</div>}
-        </div>
-
-        {/* Lista de Jogos Abertos */}
-        <div>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#666' }}>Lançar Placar e Encerrar Jogos Pendentes</h3>
-          {matches.length === 0 ? (
-            <p style={{ color: '#888', fontStyle: 'italic' }}>Nenhum jogo pendente encontrado.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {matches.map(match => (
-                <div key={match.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid #eee', borderRadius: '8px' }}>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                    <div style={{ width: '120px', textAlign: 'right', fontWeight: 'bold' }}>{match.team_a}</div>
-                    
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={scores[match.id]?.a || ''}
-                      onChange={(e) => setScores({...scores, [match.id]: {...scores[match.id], a: e.target.value}})}
-                      style={{ width: '50px', padding: '0.5rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} 
-                    />
-                    
-                    <span style={{ color: '#888' }}>X</span>
-                    
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={scores[match.id]?.b || ''}
-                      onChange={(e) => setScores({...scores, [match.id]: {...scores[match.id], b: e.target.value}})}
-                      style={{ width: '50px', padding: '0.5rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} 
-                    />
-                    
-                    <div style={{ width: '120px', fontWeight: 'bold' }}>{match.team_b}</div>
-                  </div>
-
-                  <div style={{ color: '#888', fontSize: '0.8rem', width: '150px', textAlign: 'center' }}>
-                    {new Date(match.match_date).toLocaleString('pt-BR')}
-                  </div>
-
-                  <button 
-                    onClick={() => handleFinishMatch(match.id)}
-                    style={{ padding: '0.6rem 1rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-                  >
-                    Encerrar e Pontuar
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
-
     </div>
   );
 }
