@@ -408,8 +408,8 @@ export default function Dashboard() {
                       
                       {/* Time A */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                        {(translations[match.team_a]?.flag_code || match.flag_a) !== 'un' ? (
-                          <img src={`https://flagcdn.com/w40/${translations[match.team_a]?.flag_code || match.flag_a}.png`} alt={translations[match.team_a]?.pt_name || match.team_a} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        {(translations[match.team_a]?.flag_code && translations[match.team_a]?.flag_code !== 'un' ? translations[match.team_a]?.flag_code : match.flag_a) !== 'un' ? (
+                          <img src={`https://flagcdn.com/w40/${translations[match.team_a]?.flag_code && translations[match.team_a]?.flag_code !== 'un' ? translations[match.team_a]?.flag_code : match.flag_a}.png`} alt={translations[match.team_a]?.pt_name || match.team_a} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
@@ -438,8 +438,8 @@ export default function Dashboard() {
 
                       {/* Time B */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                        {(translations[match.team_b]?.flag_code || match.flag_b) !== 'un' ? (
-                          <img src={`https://flagcdn.com/w40/${translations[match.team_b]?.flag_code || match.flag_b}.png`} alt={translations[match.team_b]?.pt_name || match.team_b} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                        {(translations[match.team_b]?.flag_code && translations[match.team_b]?.flag_code !== 'un' ? translations[match.team_b]?.flag_code : match.flag_b) !== 'un' ? (
+                          <img src={`https://flagcdn.com/w40/${translations[match.team_b]?.flag_code && translations[match.team_b]?.flag_code !== 'un' ? translations[match.team_b]?.flag_code : match.flag_b}.png`} alt={translations[match.team_b]?.pt_name || match.team_b} style={{ borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         ) : (
                           <div style={{ width: '40px', height: '30px', backgroundColor: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#888' }}>?</div>
                         )}
