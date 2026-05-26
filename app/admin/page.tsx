@@ -51,10 +51,12 @@ export default function AdminPanel() {
         return;
       }
       
+      setIsAdmin(true);
       loadEmails();
       loadMatches();
       loadTranslations();
       loadRanking();
+      setChecking(false);
     }
     loadAdminData();
   }, []);
