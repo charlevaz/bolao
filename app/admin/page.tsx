@@ -61,7 +61,32 @@ export default function AdminPanel() {
   }, []);
 
   const loadTranslations = async () => {
-    const { data } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
+    let { data } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
+    
+    // Se o dicionário estiver vazio, vamos tentar puxar dos jogos que já estão no banco!
+    if (!data || data.length === 0) {
+      const { data: matchesData } = await supabase.from('matches').select('team_a, team_b');
+      if (matchesData && matchesData.length > 0) {
+        const uniqueTeams = new Set<string>();
+        matchesData.forEach((m: any) => {
+          if (m.team_a) uniqueTeams.add(m.team_a);
+          if (m.team_b) uniqueTeams.add(m.team_b);
+        });
+        
+        const newTranslations = Array.from(uniqueTeams).map(team => ({
+          api_name: team,
+          pt_name: team,
+          flag_code: 'un'
+        }));
+        
+        if (newTranslations.length > 0) {
+          await supabase.from('team_translations').upsert(newTranslations, { onConflict: 'api_name', ignoreDuplicates: true });
+          const { data: newData } = await supabase.from('team_translations').select('*').order('api_name', { ascending: true });
+          if (newData) data = newData;
+        }
+      }
+    }
+    
     if (data) setTranslations(data);
   };
 
