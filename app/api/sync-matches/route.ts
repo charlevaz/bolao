@@ -29,9 +29,10 @@ export async function GET() {
       flag_a: flagMap[item.team1] || 'un',
       flag_b: flagMap[item.team2] || 'un',
       match_date: new Date(`${item.date}T${item.time.split(' ')[0]}:00-06:00`).toISOString(),
-      group_name: item.group || 'Fase Final',
+      // item.group é usado na fase de grupos ("Group A"), item.round nas eliminatórias
+      group_name: item.group || item.round || 'A Definir',
       venue: item.ground || 'A Definir',
-      status: 'pending' // Mantemos como pending para que o admin possa testar e encerrar
+      status: 'pending'
     }));
 
     return NextResponse.json({ matches });

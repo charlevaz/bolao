@@ -269,13 +269,21 @@ export default function AdminPanel() {
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm('CUIDADO: Apagar TODOS os jogos e palpites do sistema? Esta ação é irreversível!')) return;
-    setMatchMessage('Zerando banco de dados...');
-    // Apaga palpites primeiro (dependência de chave estrangeira)
+    if (!window.confirm(
+      'Apagar TODOS OS PALPITES e resetar os resultados dos jogos?\n\n' +
+      '• Os jogos continuarão no sistema (não serão apagados)\n' +
+      '• Os placares/resultados serão zerados\n' +
+      '• Todos os palpites serão removidos\n\n' +
+      'Esta ação é irreversível!'
+    )) return;
+    setMatchMessage('Resetando...');
+    // 1. Apaga todos os palpites
     await supabase.from('guesses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    // Depois apaga os jogos
-    await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    setMatchMessage('✅ Todos os jogos e palpites foram apagados!');
+    // 2. Zera pontos de todos os profiles
+    await supabase.from('profiles').update({ points: 0, exact_scores: 0, winner_guesses: 0, tie_guesses: 0, single_goal_guesses: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+    // 3. Reseta resultados dos jogos (mantém os jogos, zera placar)
+    await supabase.from('matches').update({ score_a: null, score_b: null, status: 'pending' }).neq('id', '00000000-0000-0000-0000-000000000000');
+    setMatchMessage('✅ Palpites apagados e resultados resetados! Os jogos foram mantidos.');
     loadMatches();
   };
 

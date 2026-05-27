@@ -219,15 +219,24 @@ export default function Dashboard() {
   };
 
   // Traduz nomes das fases do inglês para português
+  // Valores exatos do JSON openfootball 2026:
+  // Grupos: "Group A"..."Group L"
+  // Eliminatórias: "Round of 32", "Round of 16", "Quarter-final", "Semi-final", "Match for third place", "Final"
   const translatePhaseName = (name: string): string => {
-    if (!name) return 'Fase Final';
-    const g = name.toLowerCase();
-    if (g.startsWith('group') || g.includes('grupo')) return name; // Group A, B...
-    if (g.includes('round of 32')) return 'Oitavas de Final';
-    if (g.includes('round of 16')) return 'Quartas de Final';
+    if (!name) return 'Fase Eliminatória';
+    const g = name.toLowerCase().trim();
+    if (g.startsWith('group') || g.startsWith('grupo')) return name; // Group A, B... mantém original
+    if (g === 'round of 32') return 'Rodada de 32';
+    if (g === 'round of 16') return 'Oitavas de Final';
+    if (g === 'quarter-final' || g === 'quarter-finals' || g === 'quarterfinal') return 'Quartas de Final';
+    if (g === 'semi-final' || g === 'semi-finals' || g === 'semifinal') return 'Semifinal';
+    if (g === 'match for third place' || g.includes('third place') || g.includes('terceiro')) return '3º Lugar';
+    if (g === 'final') return 'Final';
+    // Fallback genérico para não exibir texto em inglês desconhecido
+    if (g.includes('round of 32')) return 'Rodada de 32';
+    if (g.includes('round of 16')) return 'Oitavas de Final';
     if (g.includes('quarter')) return 'Quartas de Final';
     if (g.includes('semi')) return 'Semifinal';
-    if (g.includes('3rd') || g.includes('third place') || g.includes('terceiro')) return '3º Lugar';
     if (g.includes('final')) return 'Final';
     return name;
   };
