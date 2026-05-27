@@ -92,6 +92,7 @@ export default function Login() {
           }}
           theme="light"
           providers={[]} // Desabilitar logins de terceiros (Google/Facebook)
+          redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined}
         />
 
       </div>
