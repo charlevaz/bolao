@@ -258,13 +258,60 @@ export default function AdminPanel() {
       const res = await fetch('/api/sync-matches');
       const data = await res.json();
       if (data.error) { setMatchMessage(`Erro: ${data.error}`); return; }
+
+      // Verificar se já existem jogos
+      const { count } = await supabase.from('matches').select('id', { count: 'exact', head: true });
+      if ((count ?? 0) > 0) {
+        const ok = window.confirm(
+          `Já existem ${count} jogos cadastrados.\n\n` +
+          `Deseja APAGAR todos e ressincronizar?\n` +
+          `(Os palpites existentes também serão apagados)`
+        );
+        if (!ok) {
+          setMatchMessage('Sincronização cancelada.');
+          return;
+        }
+        // Apagar palpites e jogos antigos
+        await supabase.from('guesses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        setMatchMessage('Jogos antigos removidos. Inserindo novos...');
+      }
+
+      // Upsert traduções de times
       const uniqueTeams = new Set<string>();
       data.matches.forEach((m: any) => { uniqueTeams.add(m.team_a); uniqueTeams.add(m.team_b); });
       const inserts = Array.from(uniqueTeams).map(t => ({ api_name: t, pt_name: t, flag_code: 'un' }));
       await supabase.from('team_translations').upsert(inserts, { onConflict: 'api_name', ignoreDuplicates: true });
+
       const { error } = await supabase.from('matches').insert(data.matches);
       if (error) setMatchMessage(`Erro: ${error.message}`);
-      else { setMatchMessage(`🎉 ${data.matches.length} jogos sincronizados!`); loadMatches(); loadTranslations(); }
+      else { setMatchMessage(`🎉 ${data.matches.length} jogos sincronizados com sucesso!`); loadMatches(); loadTranslations(); }
+    } catch (err: any) { setMatchMessage(`Erro: ${err.message}`); }
+  };
+
+  // Atualiza apenas os nomes das fases sem apagar jogos/palpites
+  const handleFixGroupNames = async () => {
+    setMatchMessage('Corrigindo nomes das fases...');
+    try {
+      const res = await fetch('/api/sync-matches');
+      const data = await res.json();
+      if (data.error) { setMatchMessage(`Erro: ${data.error}`); return; }
+      // Buscar todos os jogos existentes
+      const { data: existing } = await supabase.from('matches').select('id, team_a, team_b, match_date');
+      if (!existing) { setMatchMessage('Nenhum jogo encontrado.'); return; }
+      let updated = 0;
+      for (const apiMatch of data.matches) {
+        // Encontrar o jogo correspondente por time e data similar
+        const match = existing.find(e =>
+          e.team_a === apiMatch.team_a && e.team_b === apiMatch.team_b
+        );
+        if (match && apiMatch.group_name) {
+          await supabase.from('matches').update({ group_name: apiMatch.group_name }).eq('id', match.id);
+          updated++;
+        }
+      }
+      setMatchMessage(`✅ ${updated} jogos tiveram o nome da fase corrigido!`);
+      loadMatches();
     } catch (err: any) { setMatchMessage(`Erro: ${err.message}`); }
   };
 
@@ -273,18 +320,21 @@ export default function AdminPanel() {
       'Apagar TODOS OS PALPITES e resetar os resultados dos jogos?\n\n' +
       '• Os jogos continuarão no sistema (não serão apagados)\n' +
       '• Os placares/resultados serão zerados\n' +
-      '• Todos os palpites serão removidos\n\n' +
+      '• Todos os palpites serão removidos\n' +
+      '• Os pontos de todos os jogadores serão zerados\n\n' +
       'Esta ação é irreversível!'
     )) return;
     setMatchMessage('Resetando...');
     // 1. Apaga todos os palpites
-    await supabase.from('guesses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    // 2. Zera pontos de todos os profiles
-    await supabase.from('profiles').update({ points: 0, exact_scores: 0, winner_guesses: 0, tie_guesses: 0, single_goal_guesses: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error: gErr } = await supabase.from('guesses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (gErr) { setMatchMessage(`Erro ao apagar palpites: ${gErr.message}`); return; }
+    // 2. Zera pontos e placares exatos (apenas colunas que existem)
+    await supabase.from('profiles').update({ points: 0, exact_scores: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
     // 3. Reseta resultados dos jogos (mantém os jogos, zera placar)
     await supabase.from('matches').update({ score_a: null, score_b: null, status: 'pending' }).neq('id', '00000000-0000-0000-0000-000000000000');
-    setMatchMessage('✅ Palpites apagados e resultados resetados! Os jogos foram mantidos.');
+    setMatchMessage('✅ Palpites apagados, pontos zerados e resultados resetados!');
     loadMatches();
+    loadRanking();
   };
 
   const handleDownloadAudit = async () => {
@@ -623,8 +673,9 @@ export default function AdminPanel() {
             {/* Ações */}
             <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
               <button onClick={handleSyncApi} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Sincronizar Copa 2026</button>
+              <button onClick={handleFixGroupNames} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🏷️ Corrigir Nomes das Fases</button>
               <button onClick={handleDownloadAudit} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📊 Baixar Auditoria</button>
-              <button onClick={handleClearAll} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🗑 Limpar Tudo</button>
+              <button onClick={handleClearAll} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🗑 Limpar Palpites/Reset</button>
             </div>
             {matchMessage && <div style={{ marginBottom: '1rem', padding: '0.8rem', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2C67EA', fontWeight: 'bold' }}>{matchMessage}</div>}
 
