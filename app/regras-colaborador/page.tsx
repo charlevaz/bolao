@@ -13,7 +13,7 @@ export default async function RegrasColaborador() {
 
   // Apenas colaboradores podem acessar
   const { data: profile } = await supabase.from('profiles').select('user_group').eq('id', user.id).single();
-  if (profile?.user_group !== 'colaboradores') {
+  if (profile?.user_group !== 'colaborador') {
     redirect('/dashboard');
   }
 

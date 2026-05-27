@@ -340,7 +340,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link href={profile?.user_group === 'colaboradores' ? '/regras-colaborador' : '/regras'} style={{ padding: '0.4rem 0.8rem', backgroundColor: 'transparent', border: '1px solid #fff', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'none' }}>Regras e Prêmios</Link>
+          <Link href={profile?.user_group === 'colaborador' ? '/regras-colaborador' : '/regras'} style={{ padding: '0.4rem 0.8rem', backgroundColor: 'transparent', border: '1px solid #fff', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'none' }}>Regras e Prêmios</Link>
           {profile?.role === 'admin' && (
             <Link href="/admin" style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', textDecoration: 'none' }}>Admin</Link>
           )}
