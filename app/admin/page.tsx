@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 
-const TABS = ['ranking', 'usuarios', 'emails', 'dicionario', 'jogos', 'fases'] as const;
+const TABS = ['ranking', 'usuarios', 'emails', 'dicionario', 'jogos', 'fases', 'bolao'] as const;
 type Tab = typeof TABS[number];
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -14,6 +14,7 @@ const TAB_LABELS: Record<Tab, string> = {
   dicionario: '🌍 Dicionário',
   jogos:      '⚽ Jogos',
   fases:      '🔓 Fases',
+  bolao:      '💰 Bolão Colaborador',
 };
 
 const PHASES = [
@@ -65,6 +66,18 @@ export default function AdminPanel() {
   const [phaseMessage, setPhaseMessage] = useState('');
   const [phaseTableReady, setPhaseTableReady] = useState(false);
 
+  // Bolão de Colaboradores
+  const [poolSettings, setPoolSettings] = useState<any>({
+    value_per_person: 10,
+    pct_1st: 50, pct_2nd: 30, pct_3rd: 20,
+    prize_4th: '', prize_5th: '', prize_6th: '', prize_7th: '',
+    prize_8th: '', prize_9th: '', prize_10th: '',
+    config_locked: false
+  });
+  const [poolLoaded, setPoolLoaded] = useState(false);
+  const [poolMessage, setPoolMessage] = useState('');
+  const [colabEmails, setColabEmails] = useState<any[]>([]);
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -87,6 +100,8 @@ export default function AdminPanel() {
     loadTranslations();
     loadRanking();
     loadPhases();
+    loadPoolSettings();
+    loadColabEmails();
   };
 
   // ── Emails ────────────────────────────────────────────────────────────────
@@ -332,6 +347,61 @@ export default function AdminPanel() {
       setPhaseMessage(`${newVal ? '🔓 Fase aberta' : '🔒 Fase fechada'} com sucesso!`);
       setTimeout(() => setPhaseMessage(''), 3000);
     }
+  };
+
+  // ── Bolão Colaborador ─────────────────────────────────────────────────
+  const loadPoolSettings = async () => {
+    const { data, error } = await supabase.from('pool_settings').select('*').eq('id', 1).single();
+    if (!error && data) {
+      setPoolSettings(data);
+      setPoolLoaded(true);
+    }
+  };
+
+  const loadColabEmails = async () => {
+    const { data } = await supabase
+      .from('allowed_emails')
+      .select('*')
+      .eq('user_group', 'colaborador')
+      .order('created_at', { ascending: false });
+    if (data) setColabEmails(data);
+  };
+
+  const handleTogglePaid = async (id: string, currentPaid: boolean) => {
+    const newPaid = !currentPaid;
+    const { error } = await supabase.from('allowed_emails').update({ paid: newPaid }).eq('id', id);
+    if (!error) loadColabEmails();
+  };
+
+  const handleSavePool = async () => {
+    const total = Number(poolSettings.pct_1st) + Number(poolSettings.pct_2nd) + Number(poolSettings.pct_3rd);
+    if (total > 100) {
+      setPoolMessage(`⚠️ A soma dos percentuais (${total}%) não pode ultrapassar 100%.`);
+      return;
+    }
+    setPoolMessage('Salvando...');
+    const { error } = await supabase.from('pool_settings').update({
+      value_per_person: poolSettings.value_per_person,
+      pct_1st: poolSettings.pct_1st,
+      pct_2nd: poolSettings.pct_2nd,
+      pct_3rd: poolSettings.pct_3rd,
+      prize_4th: poolSettings.prize_4th,
+      prize_5th: poolSettings.prize_5th,
+      prize_6th: poolSettings.prize_6th,
+      prize_7th: poolSettings.prize_7th,
+      prize_8th: poolSettings.prize_8th,
+      prize_9th: poolSettings.prize_9th,
+      prize_10th: poolSettings.prize_10th,
+      updated_at: new Date().toISOString()
+    }).eq('id', 1);
+    if (error) setPoolMessage(`Erro: ${error.message}`);
+    else { setPoolMessage('✅ Configurações salvas com sucesso!'); setTimeout(() => setPoolMessage(''), 3000); }
+  };
+
+  const handleLockPool = async () => {
+    if (!window.confirm('Bloquear a configuração do bolão? Após isso, você não poderá alterar os percentuais ou o valor. Os pagamentos ainda poderão ser marcados.')) return;
+    const { error } = await supabase.from('pool_settings').update({ config_locked: true }).eq('id', 1);
+    if (!error) { setPoolSettings((p: any) => ({ ...p, config_locked: true })); setPoolMessage('🔒 Configuração bloqueada!'); }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -668,6 +738,234 @@ CREATE POLICY "public_read" ON public.phase_settings FOR SELECT USING (true);`}
             )}
           </div>
         )}
+
+        {/* ── TAB: BOLÃO COLABORADOR ────────────────────────────────────── */}
+        {activeTab === 'bolao' && (() => {
+          const paidCount = colabEmails.filter(e => e.paid).length;
+          const totalPool = paidCount * Number(poolSettings.value_per_person);
+          const prize1 = (totalPool * Number(poolSettings.pct_1st)) / 100;
+          const prize2 = (totalPool * Number(poolSettings.pct_2nd)) / 100;
+          const prize3 = (totalPool * Number(poolSettings.pct_3rd)) / 100;
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+              {/* AVISO SE TABELA NÃO CRIADA */}
+              {!poolLoaded && (
+                <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '12px', padding: '1.5rem' }}>
+                  <h3 style={{ color: '#b45309', margin: '0 0 0.8rem 0' }}>⚠️ Tabela não encontrada</h3>
+                  <p style={{ color: '#92400e', fontSize: '0.9rem', margin: '0 0 1rem 0' }}>
+                    Rode o SQL abaixo no Supabase SQL Editor para ativar esta aba:
+                  </p>
+                  <pre style={{ backgroundColor: '#fff', padding: '0.8rem', borderRadius: '6px', fontSize: '0.75rem', overflowX: 'auto', color: '#333' }}>
+{`ALTER TABLE public.allowed_emails ADD COLUMN IF NOT EXISTS paid BOOLEAN DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS public.pool_settings (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  value_per_person NUMERIC DEFAULT 10,
+  pct_1st NUMERIC DEFAULT 50, pct_2nd NUMERIC DEFAULT 30, pct_3rd NUMERIC DEFAULT 20,
+  prize_4th TEXT DEFAULT '', prize_5th TEXT DEFAULT '', prize_6th TEXT DEFAULT '',
+  prize_7th TEXT DEFAULT '', prize_8th TEXT DEFAULT '', prize_9th TEXT DEFAULT '',
+  prize_10th TEXT DEFAULT '', config_locked BOOLEAN DEFAULT false,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.pool_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "admin_pool_all" ON public.pool_settings FOR ALL
+  USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin')
+  WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "public_pool_read" ON public.pool_settings FOR SELECT USING (true);
+INSERT INTO public.pool_settings (id, value_per_person, pct_1st, pct_2nd, pct_3rd)
+VALUES (1, 10, 50, 30, 20) ON CONFLICT (id) DO NOTHING;`}
+                  </pre>
+                  <button onClick={loadPoolSettings} style={{ marginTop: '1rem', padding: '0.6rem 1.2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    🔄 Verificar novamente
+                  </button>
+                </div>
+              )}
+
+              {poolLoaded && (<>
+
+                {/* PAINEL RESUMO */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: '1rem' }}>
+                  {[
+                    { label: 'Total de Colaboradores', value: colabEmails.length, color: '#2C67EA', icon: '👥' },
+                    { label: 'Pagamentos Confirmados', value: paidCount, color: '#10b981', icon: '✅' },
+                    { label: 'Valor por Pessoa', value: `R$ ${Number(poolSettings.value_per_person).toFixed(2)}`, color: '#7c3aed', icon: '💵' },
+                    { label: 'Total Arrecadado', value: `R$ ${totalPool.toFixed(2)}`, color: '#eab308', icon: '🏆' },
+                  ].map(card => (
+                    <div key={card.label} style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '1.2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.8rem' }}>{card.icon}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: '900', color: card.color, marginTop: '0.3rem' }}>{card.value}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.2rem' }}>{card.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CONFIGURAÇÃO DO BOLÃO */}
+                <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                    <h2 style={{ margin: 0, color: '#0F1849' }}>⚙️ Configuração do Prêmio</h2>
+                    {poolSettings.config_locked
+                      ? <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #ef4444', padding: '0.3rem 0.8rem', borderRadius: '20px' }}>🔒 Bloqueado</span>
+                      : <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#10b981', backgroundColor: '#f0fdf4', border: '1px solid #10b981', padding: '0.3rem 0.8rem', borderRadius: '20px' }}>🔓 Editável</span>
+                    }
+                  </div>
+
+                  {poolSettings.config_locked && (
+                    <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '0.8rem', marginBottom: '1rem', color: '#991b1b', fontSize: '0.85rem' }}>
+                      ⚠️ A configuração está bloqueada. Os valores e percentuais não podem mais ser alterados. Apenas os pagamentos podem ser marcados.
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '1.2rem', marginBottom: '1.5rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 'bold', color: '#0F1849', marginBottom: '0.4rem', fontSize: '0.9rem' }}>💵 Valor por pessoa (R$)</label>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={poolSettings.value_per_person}
+                        disabled={poolSettings.config_locked}
+                        onChange={e => setPoolSettings((p: any) => ({ ...p, value_per_person: e.target.value }))}
+                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 'bold', color: '#eab308', marginBottom: '0.4rem', fontSize: '0.9rem' }}>🥇 % para o 1º lugar</label>
+                      <input type="number" min="0" max="100"
+                        value={poolSettings.pct_1st}
+                        disabled={poolSettings.config_locked}
+                        onChange={e => setPoolSettings((p: any) => ({ ...p, pct_1st: e.target.value }))}
+                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #fbbf24', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
+                      />
+                      {totalPool > 0 && <div style={{ fontSize: '0.8rem', color: '#eab308', marginTop: '0.2rem', fontWeight: 'bold' }}>= R$ {prize1.toFixed(2)}</div>}
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 'bold', color: '#94a3b8', marginBottom: '0.4rem', fontSize: '0.9rem' }}>🥈 % para o 2º lugar</label>
+                      <input type="number" min="0" max="100"
+                        value={poolSettings.pct_2nd}
+                        disabled={poolSettings.config_locked}
+                        onChange={e => setPoolSettings((p: any) => ({ ...p, pct_2nd: e.target.value }))}
+                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
+                      />
+                      {totalPool > 0 && <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem', fontWeight: 'bold' }}>= R$ {prize2.toFixed(2)}</div>}
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 'bold', color: '#b45309', marginBottom: '0.4rem', fontSize: '0.9rem' }}>🥉 % para o 3º lugar</label>
+                      <input type="number" min="0" max="100"
+                        value={poolSettings.pct_3rd}
+                        disabled={poolSettings.config_locked}
+                        onChange={e => setPoolSettings((p: any) => ({ ...p, pct_3rd: e.target.value }))}
+                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #b45309', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
+                      />
+                      {totalPool > 0 && <div style={{ fontSize: '0.8rem', color: '#b45309', marginTop: '0.2rem', fontWeight: 'bold' }}>= R$ {prize3.toFixed(2)}</div>}
+                    </div>
+                  </div>
+
+                  {/* PRÊMIOS 4º-10º */}
+                  <h3 style={{ color: '#0F1849', marginBottom: '1rem' }}>🎁 Prêmios 4º ao 10º lugar (texto livre)</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: '0.8rem', marginBottom: '1.5rem' }}>
+                    {[4,5,6,7,8,9,10].map(pos => {
+                      const key = `prize_${['fourth','fifth','sixth','seventh','eighth','ninth','tenth'][pos-4]}` as string;
+                      const realKey = `prize_${pos}th` as string;
+                      return (
+                        <div key={pos}>
+                          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.3rem' }}>{pos}º lugar</label>
+                          <input
+                            type="text"
+                            placeholder={`Ex: Caneca personalizada, Camisa...`}
+                            value={(poolSettings as any)[realKey] || ''}
+                            disabled={poolSettings.config_locked}
+                            onChange={e => setPoolSettings((p: any) => ({ ...p, [realKey]: e.target.value }))}
+                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.85rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {poolMessage && <div style={{ marginBottom: '1rem', padding: '0.8rem', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2C67EA', fontWeight: 'bold' }}>{poolMessage}</div>}
+
+                  {!poolSettings.config_locked && (
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <button onClick={handleSavePool} style={{ padding: '0.8rem 1.5rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                        💾 Salvar Configuração
+                      </button>
+                      <button onClick={handleLockPool} style={{ padding: '0.8rem 1.5rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                        🔒 Bloquear (início do bolão)
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* LISTA DE COLABORADORES + PAGAMENTOS */}
+                <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                    <h2 style={{ margin: 0, color: '#0F1849' }}>💳 Controle de Pagamentos</h2>
+                    <button onClick={loadColabEmails} style={{ padding: '0.5rem 1rem', backgroundColor: '#f0f4f8', color: '#0F1849', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                      🔄 Atualizar
+                    </button>
+                  </div>
+                  <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '10px' }}>
+                    {colabEmails.map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1rem', borderBottom: '1px solid #f8fafc', backgroundColor: item.paid ? '#f0fdf4' : '#fff' }}>
+                        <div>
+                          <span style={{ fontWeight: '700', color: '#0F1849', fontSize: '0.95rem' }}>{item.email}</span>
+                          <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', backgroundColor: '#f0f4f8', color: '#64748b', padding: '2px 6px', borderRadius: '8px' }}>colaborador</span>
+                          {item.paid && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '8px', fontWeight: 'bold' }}>✅ Pago · +R$ {Number(poolSettings.value_per_person).toFixed(2)}</span>}
+                        </div>
+                        <button
+                          onClick={() => handleTogglePaid(item.id, item.paid ?? false)}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            backgroundColor: item.paid ? '#ef4444' : '#10b981',
+                            color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem',
+                            minWidth: '120px'
+                          }}
+                        >
+                          {item.paid ? '❌ Desmarcar' : '✅ Marcar como Pago'}
+                        </button>
+                      </div>
+                    ))}
+                    {colabEmails.length === 0 && <p style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Nenhum colaborador cadastrado ainda. Adicione pela aba 📧 Participantes.</p>}
+                  </div>
+                </div>
+
+                {/* RESUMO DE PREMIAÇÃO */}
+                {totalPool > 0 && (
+                  <div style={{ backgroundColor: '#0F1849', padding: '1.5rem', borderRadius: '12px', color: '#fff' }}>
+                    <h2 style={{ margin: '0 0 1.2rem 0', color: '#fff' }}>🏆 Premiação Calculada</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {[
+                        { pos: '🥇 1º', value: `R$ ${prize1.toFixed(2)}`, pct: poolSettings.pct_1st },
+                        { pos: '🥈 2º', value: `R$ ${prize2.toFixed(2)}`, pct: poolSettings.pct_2nd },
+                        { pos: '🥉 3º', value: `R$ ${prize3.toFixed(2)}`, pct: poolSettings.pct_3rd },
+                      ].map(item => (
+                        <div key={item.pos} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>{item.pos} lugar</span>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eab308' }}>{item.value}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '0.5rem' }}>({item.pct}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                      {[4,5,6,7,8,9,10].map(pos => {
+                        const realKey = `prize_${pos}th`;
+                        const prize = (poolSettings as any)[realKey];
+                        if (!prize) return null;
+                        return (
+                          <div key={pos} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 1rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '8px' }}>
+                            <span style={{ color: '#94a3b8' }}>🎁 {pos}º lugar</span>
+                            <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{prize}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              </>)}
+            </div>
+          );
+        })()}
 
       </main>
     </div>
