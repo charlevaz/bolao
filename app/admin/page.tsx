@@ -254,9 +254,13 @@ export default function AdminPanel() {
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm('CUIDADO: Apagar TODOS os jogos e palpites?')) return;
+    if (!window.confirm('CUIDADO: Apagar TODOS os jogos e palpites do sistema? Esta ação é irreversível!')) return;
+    setMatchMessage('Zerando banco de dados...');
+    // Apaga palpites primeiro (dependência de chave estrangeira)
+    await supabase.from('guesses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Depois apaga os jogos
     await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    setMatchMessage('Todos os jogos apagados!');
+    setMatchMessage('✅ Todos os jogos e palpites foram apagados!');
     loadMatches();
   };
 
@@ -285,11 +289,11 @@ export default function AdminPanel() {
       const headers = ['Nome', 'E-mail', 'Grupo', 'Data do Jogo', 'Jogo', 'Palpite A', 'Palpite B', 'Placar Real', 'Pontos', 'Tipo de Ponto', 'Data/Hora do Palpite'];
       const rows = data.map((g: any) => [
         `"${g.profiles?.name || ''}"`, `"${g.profiles?.email || ''}"`, `"${g.profiles?.user_group || ''}"`,
-        `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR') : ''}"`,
+        `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : ''}"`,
         `"${g.matches?.team_a} x ${g.matches?.team_b}"`,
         g.guess_score_a, g.guess_score_b,
         g.matches?.score_a !== null ? `"${g.matches?.score_a} x ${g.matches?.score_b}"` : '"Pendente"',
-        g.points_earned, `"${getTipoPonto(g)}"`, `"${new Date(g.created_at).toLocaleString('pt-BR')}"`
+        g.points_earned, `"${getTipoPonto(g)}"`, `"${new Date(g.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}"` 
       ]);
       const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -304,13 +308,15 @@ export default function AdminPanel() {
   // ── Fases ─────────────────────────────────────────────────────────────────
   const loadPhases = async () => {
     const { data, error } = await supabase.from('phase_settings').select('*');
-    if (error || data === null) {
-      setPhaseTableReady(false); // tabela não existe ou erro de permissão
+    if (error) {
+      // Tabela não existe ou sem permissão
+      setPhaseTableReady(false);
       return;
     }
-    setPhaseTableReady(true); // tabela existe!
+    // Tabela existe (mesmo que vazia)
+    setPhaseTableReady(true);
     const map: any = {};
-    data.forEach((p: any) => { map[p.phase_key] = p.is_open; });
+    (data || []).forEach((p: any) => { map[p.phase_key] = p.is_open; });
     setOpenPhases(map);
   };
 
@@ -565,7 +571,7 @@ export default function AdminPanel() {
                   <div key={match.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.8rem 1rem', border: '1px solid #eee', borderRadius: '8px', flexWrap: 'wrap' }}>
                     <button onClick={() => handleDeleteMatch(match.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Excluir">🗑️</button>
                     <div style={{ flex: 1, minWidth: '200px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#888' }}>{new Date(match.match_date).toLocaleString('pt-BR')} | {match.status === 'pending' ? '⏳ Pendente' : '✅ Encerrado'}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#888' }}>{new Date(match.match_date).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | {match.status === 'pending' ? '⏳ Pendente' : '✅ Encerrado'}</div>
                       <div style={{ fontWeight: 'bold', color: '#0F1849' }}>{match.team_a} x {match.team_b}</div>
                     </div>
                     {match.status === 'pending' ? (

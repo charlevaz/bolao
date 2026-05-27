@@ -92,15 +92,16 @@ export default function Dashboard() {
         
         matchesData.forEach(m => {
           const d = new Date(m.match_date);
-          // Usar data LOCAL para evitar duplicatas por fuso UTC
-          const localDateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          // Usar data LOCAL de São Paulo para evitar duplicatas por fuso UTC
+          const localDateStr = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
           if (!daysMap.has(localDateStr)) {
             daysMap.set(localDateStr, true);
             const diasSemana = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+            const dSP = new Date(d.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
             daysFormat.push({
               date: localDateStr,
-              label: `${d.getDate()} ${d.toLocaleString('pt-BR', {month: 'short'}).toUpperCase()}`,
-              short: diasSemana[d.getDay()]
+              label: `${dSP.getDate()} ${dSP.toLocaleString('pt-BR', {month: 'short'}).toUpperCase()}`,
+              short: diasSemana[dSP.getDay()]
             });
           }
         });
@@ -217,6 +218,34 @@ export default function Dashboard() {
     return now > (matchDate - 60 * 60 * 1000); // 1 hora
   };
 
+  // Traduz nomes das fases do inglês para português
+  const translatePhaseName = (name: string): string => {
+    if (!name) return 'Fase Final';
+    const g = name.toLowerCase();
+    if (g.startsWith('group') || g.includes('grupo')) return name; // Group A, B...
+    if (g.includes('round of 32')) return 'Oitavas de Final';
+    if (g.includes('round of 16')) return 'Quartas de Final';
+    if (g.includes('quarter')) return 'Quartas de Final';
+    if (g.includes('semi')) return 'Semifinal';
+    if (g.includes('3rd') || g.includes('third place') || g.includes('terceiro')) return '3º Lugar';
+    if (g.includes('final')) return 'Final';
+    return name;
+  };
+
+  // Formata hora no fuso de São Paulo
+  const formatTimeBrasilia = (dateStr: string) => {
+    return new Date(dateStr).toLocaleTimeString('pt-BR', {
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'America/Sao_Paulo'
+    });
+  };
+
+  const formatDateBrasilia = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('pt-BR', {
+      timeZone: 'America/Sao_Paulo'
+    });
+  };
+
   // Detecta se o jogo é de fase eliminatória (não é fase de grupo)
   const getMatchPhaseKey = (groupName: string): string | null => {
     if (!groupName) return null;
@@ -256,9 +285,8 @@ export default function Dashboard() {
   }
 
   const filteredMatches = matches.filter(m => {
-    const d = new Date(m.match_date);
-    const localDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    return localDate === selectedDay;
+    const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
+    return spDate === selectedDay;
   });
   const progressPercent = matches.length > 0 ? Math.round((guesses.length / matches.length) * 100) : 0;
 
@@ -454,7 +482,7 @@ export default function Dashboard() {
 
                     {/* INFO DO JOGO */}
                     <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#0F1849', fontSize: '0.85rem' }}>
-                      <span style={{ fontWeight: '900' }}>{match.group_name || 'Fase Final'}</span> • {new Date(match.match_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} • {match.venue || 'Estádio A Definir'}
+                      <span style={{ fontWeight: '900' }}>{translatePhaseName(match.group_name)}</span> • {formatTimeBrasilia(match.match_date)} • {match.venue || 'Estádio A Definir'}
                     </div>
 
                     {/* PLACARES */}
