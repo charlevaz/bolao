@@ -225,14 +225,14 @@ export default function Dashboard() {
     if (!name) return 'Fase Eliminatória';
     const g = name.toLowerCase().trim();
     if (g.startsWith('group') || g.startsWith('grupo')) return name; // Group A, B... mantém original
-    if (g === 'round of 32') return 'Rodada de 32';
+    if (g === 'round of 32') return '16-avos de Final (Fase de 32)';
     if (g === 'round of 16') return 'Oitavas de Final';
     if (g === 'quarter-final' || g === 'quarter-finals' || g === 'quarterfinal') return 'Quartas de Final';
     if (g === 'semi-final' || g === 'semi-finals' || g === 'semifinal') return 'Semifinal';
     if (g === 'match for third place' || g.includes('third place') || g.includes('terceiro')) return '3º Lugar';
     if (g === 'final') return 'Final';
     // Fallback genérico para não exibir texto em inglês desconhecido
-    if (g.includes('round of 32')) return 'Rodada de 32';
+    if (g.includes('round of 32')) return '16-avos de Final (Fase de 32)';
     if (g.includes('round of 16')) return 'Oitavas de Final';
     if (g.includes('quarter')) return 'Quartas de Final';
     if (g.includes('semi')) return 'Semifinal';
