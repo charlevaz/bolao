@@ -883,12 +883,10 @@ VALUES (1, 10, 50, 30, 20) ON CONFLICT (id) DO NOTHING;`}
               {poolLoaded && (<>
 
                 {/* PAINEL RESUMO */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: '1rem', marginBottom: '2rem' }}>
                   {[
                     { label: 'Total de Colaboradores', value: colabEmails.length, color: '#2C67EA', icon: '👥' },
                     { label: 'Pagamentos Confirmados', value: paidCount, color: '#10b981', icon: '✅' },
-                    { label: 'Valor por Pessoa', value: `R$ ${Number(poolSettings.value_per_person).toFixed(2)}`, color: '#7c3aed', icon: '💵' },
-                    { label: 'Total Arrecadado', value: `R$ ${totalPool.toFixed(2)}`, color: '#eab308', icon: '🏆' },
                   ].map(card => (
                     <div key={card.label} style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '1.2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', textAlign: 'center' }}>
                       <div style={{ fontSize: '1.8rem' }}>{card.icon}</div>
@@ -896,101 +894,6 @@ VALUES (1, 10, 50, 30, 20) ON CONFLICT (id) DO NOTHING;`}
                       <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.2rem' }}>{card.label}</div>
                     </div>
                   ))}
-                </div>
-
-                {/* CONFIGURAÇÃO DO BOLÃO */}
-                <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.08)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-                    <h2 style={{ margin: 0, color: '#0F1849' }}>⚙️ Configuração do Prêmio</h2>
-                    {poolSettings.config_locked
-                      ? <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #ef4444', padding: '0.3rem 0.8rem', borderRadius: '20px' }}>🔒 Bloqueado</span>
-                      : <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#10b981', backgroundColor: '#f0fdf4', border: '1px solid #10b981', padding: '0.3rem 0.8rem', borderRadius: '20px' }}>🔓 Editável</span>
-                    }
-                  </div>
-
-                  {poolSettings.config_locked && (
-                    <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '0.8rem', marginBottom: '1rem', color: '#991b1b', fontSize: '0.85rem' }}>
-                      ⚠️ A configuração está bloqueada. Os valores e percentuais não podem mais ser alterados. Apenas os pagamentos podem ser marcados.
-                    </div>
-                  )}
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '1.2rem', marginBottom: '1.5rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 'bold', color: '#0F1849', marginBottom: '0.4rem', fontSize: '0.9rem' }}>💵 Valor por pessoa (R$)</label>
-                      <input
-                        type="number" min="0" step="0.01"
-                        value={poolSettings.value_per_person}
-                        disabled={poolSettings.config_locked}
-                        onChange={e => setPoolSettings((p: any) => ({ ...p, value_per_person: e.target.value }))}
-                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 'bold', color: '#eab308', marginBottom: '0.4rem', fontSize: '0.9rem' }}>🥇 % para o 1º lugar</label>
-                      <input type="number" min="0" max="100"
-                        value={poolSettings.pct_1st}
-                        disabled={poolSettings.config_locked}
-                        onChange={e => setPoolSettings((p: any) => ({ ...p, pct_1st: e.target.value }))}
-                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #fbbf24', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
-                      />
-                      {totalPool > 0 && <div style={{ fontSize: '0.8rem', color: '#eab308', marginTop: '0.2rem', fontWeight: 'bold' }}>= R$ {prize1.toFixed(2)}</div>}
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 'bold', color: '#94a3b8', marginBottom: '0.4rem', fontSize: '0.9rem' }}>🥈 % para o 2º lugar</label>
-                      <input type="number" min="0" max="100"
-                        value={poolSettings.pct_2nd}
-                        disabled={poolSettings.config_locked}
-                        onChange={e => setPoolSettings((p: any) => ({ ...p, pct_2nd: e.target.value }))}
-                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
-                      />
-                      {totalPool > 0 && <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem', fontWeight: 'bold' }}>= R$ {prize2.toFixed(2)}</div>}
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 'bold', color: '#b45309', marginBottom: '0.4rem', fontSize: '0.9rem' }}>🥉 % para o 3º lugar</label>
-                      <input type="number" min="0" max="100"
-                        value={poolSettings.pct_3rd}
-                        disabled={poolSettings.config_locked}
-                        onChange={e => setPoolSettings((p: any) => ({ ...p, pct_3rd: e.target.value }))}
-                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid #b45309', fontSize: '1rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
-                      />
-                      {totalPool > 0 && <div style={{ fontSize: '0.8rem', color: '#b45309', marginTop: '0.2rem', fontWeight: 'bold' }}>= R$ {prize3.toFixed(2)}</div>}
-                    </div>
-                  </div>
-
-                  {/* PRÊMIOS 4º-10º */}
-                  <h3 style={{ color: '#0F1849', marginBottom: '1rem' }}>🎁 Prêmios 4º ao 10º lugar (texto livre)</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: '0.8rem', marginBottom: '1.5rem' }}>
-                    {[4,5,6,7,8,9,10].map(pos => {
-                      const key = `prize_${['fourth','fifth','sixth','seventh','eighth','ninth','tenth'][pos-4]}` as string;
-                      const realKey = `prize_${pos}th` as string;
-                      return (
-                        <div key={pos}>
-                          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.3rem' }}>{pos}º lugar</label>
-                          <input
-                            type="text"
-                            placeholder={`Ex: Caneca personalizada, Camisa...`}
-                            value={(poolSettings as any)[realKey] || ''}
-                            disabled={poolSettings.config_locked}
-                            onChange={e => setPoolSettings((p: any) => ({ ...p, [realKey]: e.target.value }))}
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.85rem', backgroundColor: poolSettings.config_locked ? '#f8fafc' : '#fff', color: '#0F1849' }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {poolMessage && <div style={{ marginBottom: '1rem', padding: '0.8rem', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2C67EA', fontWeight: 'bold' }}>{poolMessage}</div>}
-
-                  {!poolSettings.config_locked && (
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                      <button onClick={handleSavePool} style={{ padding: '0.8rem 1.5rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        💾 Salvar Configuração
-                      </button>
-                      <button onClick={handleLockPool} style={{ padding: '0.8rem 1.5rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        🔒 Bloquear (início do bolão)
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {/* LISTA DE COLABORADORES + PAGAMENTOS */}
@@ -1007,7 +910,7 @@ VALUES (1, 10, 50, 30, 20) ON CONFLICT (id) DO NOTHING;`}
                         <div>
                           <span style={{ fontWeight: '700', color: '#0F1849', fontSize: '0.95rem' }}>{item.email}</span>
                           <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', backgroundColor: '#f0f4f8', color: '#64748b', padding: '2px 6px', borderRadius: '8px' }}>colaborador</span>
-                          {item.paid && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '8px', fontWeight: 'bold' }}>✅ Pago · +R$ {Number(poolSettings.value_per_person).toFixed(2)}</span>}
+                          {item.paid && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '8px', fontWeight: 'bold' }}>✅ Pago</span>}
                         </div>
                         <button
                           onClick={() => handleTogglePaid(item.id, item.paid ?? false)}

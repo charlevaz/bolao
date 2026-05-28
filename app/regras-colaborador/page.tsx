@@ -17,17 +17,7 @@ export default async function RegrasColaborador() {
     redirect('/dashboard');
   }
 
-  // Buscar pool do bolão de colaboradores
-  const { data: pool } = await supabase.from('pool_settings').select('*').eq('id', 1).single();
-  
-  // Buscar total arrecadado (quantos pagos x valor)
-  const { data: paidEmails } = await supabase.from('allowed_emails').select('id').eq('paid', true);
-  const paidCount = paidEmails?.length || 0;
-  
-  const totalPool = pool ? paidCount * Number(pool.value_per_person) : 0;
-  const prize1 = pool ? (totalPool * Number(pool.pct_1st)) / 100 : 0;
-  const prize2 = pool ? (totalPool * Number(pool.pct_2nd)) / 100 : 0;
-  const prize3 = pool ? (totalPool * Number(pool.pct_3rd)) / 100 : 0;
+  // Buscar se o usuário está pago (se ainda quiser exibir algo, opcional, mas vamos manter simples)
 
   return (
     <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', lineHeight: '1.6', color: '#fff' }}>
@@ -64,40 +54,28 @@ export default async function RegrasColaborador() {
         </section>
 
         <section style={{ backgroundColor: '#f0fdf4', border: '1px solid #16a34a', padding: '2rem', borderRadius: '16px', color: '#333' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#16a34a', textAlign: 'center' }}>💰 Premiação (Ao Vivo)</h2>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#16a34a', textAlign: 'center' }}>💰 Premiação Oficial</h2>
           
-          {pool ? (
-            <>
-              <p style={{ opacity: 0.9, marginBottom: '1.5rem', textAlign: 'center' }}>
-                Taxa: <strong>R$ {Number(pool.value_per_person).toFixed(2)}</strong><br/>
-                Arrecadado até agora: <strong>R$ {totalPool.toFixed(2)}</strong>
-              </p>
-              
-              <ul style={{ listStyle: 'none', padding: 0, fontWeight: 'bold' }}>
-                <li style={{ marginBottom: '0.8rem', color: '#d97706', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🥇 1º Lugar ({pool.pct_1st}%)</span> <span>R$ {prize1.toFixed(2)}</span>
-                </li>
-                <li style={{ marginBottom: '0.8rem', color: '#64748b', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🥈 2º Lugar ({pool.pct_2nd}%)</span> <span>R$ {prize2.toFixed(2)}</span>
-                </li>
-                <li style={{ marginBottom: '1.5rem', color: '#b45309', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🥉 3º Lugar ({pool.pct_3rd}%)</span> <span>R$ {prize3.toFixed(2)}</span>
-                </li>
-                
-                {[4,5,6,7,8,9,10].map(pos => {
-                  const prize = (pool as any)[`prize_${pos}th`];
-                  if (!prize) return null;
-                  return (
-                    <li key={pos} style={{ marginBottom: '0.5rem', color: '#16a34a', fontSize: '1rem', borderTop: '1px solid #ddd', paddingTop: '0.5rem' }}>
-                      🎁 {pos}º lugar: {prize}
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          ) : (
-            <p style={{ textAlign: 'center' }}>Aguardando configuração do administrador.</p>
-          )}
+          <ul style={{ listStyle: 'none', padding: 0, fontWeight: 'bold' }}>
+            <li style={{ marginBottom: '0.8rem', color: '#d97706', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🥇 1º Lugar</span> <span>R$ 500,00</span>
+            </li>
+            <li style={{ marginBottom: '0.8rem', color: '#64748b', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🥈 2º Lugar</span> <span>R$ 300,00</span>
+            </li>
+            <li style={{ marginBottom: '0.8rem', color: '#b45309', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🥉 3º Lugar</span> <span>R$ 100,00</span>
+            </li>
+            <li style={{ marginBottom: '0.8rem', color: '#16a34a', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🏅 4º Lugar</span> <span>R$ 50,00</span>
+            </li>
+            <li style={{ marginBottom: '0.8rem', color: '#16a34a', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🏅 5º Lugar</span> <span>R$ 10,00</span>
+            </li>
+            <li style={{ marginBottom: '1.5rem', color: '#16a34a', fontSize: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🏅 6º Lugar</span> <span>R$ 1,00</span>
+            </li>
+          </ul>
         </section>
       </div>
 
@@ -108,7 +86,7 @@ export default async function RegrasColaborador() {
           <li>Será permitido apenas 1 palpite por jogo por E-mail;</li>
           <li>Os palpites devem ser enviados antes do início da partida;</li>
           <li>Não será permitido alterar palpites após o fechamento.</li>
-          <li>A premiação em dinheiro será dividida conforme os percentuais acima sobre o valor total arrecadado.</li>
+          <li>A premiação será distribuída de forma fixa para os 6 primeiros colocados no ranking final.</li>
         </ul>
       </section>
 
