@@ -14,10 +14,20 @@ export default async function Home() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem' }}>
       
       {/* Logotipos */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', justifyContent: 'center', backgroundColor: '#fff', padding: '1rem', borderRadius: '16px' }}>
-        <img src="/logo-sumarezinho.png" alt="EntreGô Sumarezinho" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
-        <img src="/logo-aldeota.png" alt="EntreGô Aldeota" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
-        <img src="/logo-recreio.png" alt="EntreGô Recreio" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
+      <div style={{ 
+        display: 'flex', 
+        gap: '1rem', 
+        marginBottom: '2rem', 
+        flexWrap: 'wrap', 
+        justifyContent: 'center', 
+        backgroundColor: '#fff', 
+        padding: '0.8rem 1.5rem', 
+        borderRadius: '9999px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <img src="/logo-sumarezinho.png" alt="EntreGô Sumarezinho" style={{ height: '80px', width: '80px', borderRadius: '50%', objectFit: 'cover' }} />
+        <img src="/logo-aldeota.png" alt="EntreGô Aldeota" style={{ height: '80px', width: '80px', borderRadius: '50%', objectFit: 'cover' }} />
+        <img src="/logo-recreio.png" alt="EntreGô Recreio" style={{ height: '80px', width: '80px', borderRadius: '50%', objectFit: 'cover' }} />
       </div>
 
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', textAlign: 'center' }}>
