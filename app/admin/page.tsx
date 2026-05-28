@@ -835,62 +835,6 @@ CREATE POLICY "public_read" ON public.phase_settings FOR SELECT USING (true);`}
           </div>
         )}
 
-                        </div>
-                        <button
-                          onClick={() => handleTogglePaid(item.id, item.paid ?? false)}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            backgroundColor: item.paid ? '#ef4444' : '#10b981',
-                            color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem',
-                            minWidth: '120px'
-                          }}
-                        >
-                          {item.paid ? '❌ Desmarcar' : '✅ Marcar como Pago'}
-                        </button>
-                      </div>
-                    ))}
-                    {colabEmails.length === 0 && <p style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Nenhum colaborador cadastrado ainda. Adicione pela aba 📧 Participantes.</p>}
-                  </div>
-                </div>
-
-                {/* RESUMO DE PREMIAÇÃO */}
-                {totalPool > 0 && (
-                  <div style={{ backgroundColor: '#0F1849', padding: '1.5rem', borderRadius: '12px', color: '#fff' }}>
-                    <h2 style={{ margin: '0 0 1.2rem 0', color: '#fff' }}>🏆 Premiação Calculada</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                      {[
-                        { pos: '🥇 1º', value: `R$ ${prize1.toFixed(2)}`, pct: poolSettings.pct_1st },
-                        { pos: '🥈 2º', value: `R$ ${prize2.toFixed(2)}`, pct: poolSettings.pct_2nd },
-                        { pos: '🥉 3º', value: `R$ ${prize3.toFixed(2)}`, pct: poolSettings.pct_3rd },
-                      ].map(item => (
-                        <div key={item.pos} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>{item.pos} lugar</span>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eab308' }}>{item.value}</span>
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '0.5rem' }}>({item.pct}%)</span>
-                          </div>
-                        </div>
-                      ))}
-                      {[4,5,6,7,8,9,10].map(pos => {
-                        const realKey = `prize_${pos}th`;
-                        const prize = (poolSettings as any)[realKey];
-                        if (!prize) return null;
-                        return (
-                          <div key={pos} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 1rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '8px' }}>
-                            <span style={{ color: '#94a3b8' }}>🎁 {pos}º lugar</span>
-                            <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{prize}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-              </>)}
-            </div>
-          );
-        })()}
-
       </main>
     </div>
   );
