@@ -44,11 +44,20 @@ export default function Dashboard() {
       }
 
       // 1. Carregar Perfil
-      const { data: profileData } = await supabase
+      let { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
+        
+      if (profileData) {
+        // Garantir sincronia de elegibilidade com allowed_emails
+        const { data: emailData } = await supabase.from('allowed_emails').select('eligible').eq('email', profileData.email).single();
+        if (emailData && emailData.eligible !== profileData.eligible) {
+          await supabase.from('profiles').update({ eligible: emailData.eligible }).eq('id', profileData.id);
+          profileData.eligible = emailData.eligible;
+        }
+      }
       
       setProfile(profileData);
       
@@ -57,20 +66,26 @@ export default function Dashboard() {
         setShowNameModal(true);
       }
 
-      // 2. Carregar Ranking (Top 10 do mesmo grupo)
+      // 2. Carregar Ranking (Top 10 do mesmo grupo apenas Elegíveis)
       if (profileData) {
-        const { count } = await supabase
-          .from('profiles')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_group', profileData.user_group)
-          .gt('points', profileData.points);
-          
-        setRankPos((count || 0) + 1);
+        if (profileData.eligible !== false) {
+          const { count } = await supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_group', profileData.user_group)
+            .eq('eligible', true)
+            .gt('points', profileData.points);
+            
+          setRankPos((count || 0) + 1);
+        } else {
+          setRankPos(null);
+        }
 
         const { data: topData } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_group', profileData.user_group)
+          .eq('eligible', true)
           .order('points', { ascending: false })
           .limit(10);
         
@@ -335,7 +350,11 @@ export default function Dashboard() {
             <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>{profile?.name}</h1>
             <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
               {profile?.points} pts • {profile?.exact_scores} Placares Exatos
-              {rankPos && <span style={{ marginLeft: '0.5rem', backgroundColor: '#eab308', color: '#000', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold' }}>🏅 {rankPos}º lugar</span>}
+              {profile?.eligible === false ? (
+                <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold' }}>Não Elegível</span>
+              ) : rankPos ? (
+                <span style={{ marginLeft: '0.5rem', backgroundColor: '#eab308', color: '#000', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold' }}>🏅 {rankPos}º lugar</span>
+              ) : null}
             </p>
           </div>
         </div>

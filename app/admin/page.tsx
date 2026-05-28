@@ -124,6 +124,17 @@ export default function AdminPanel() {
     loadEmails();
   };
 
+  const handleToggleEligibility = async (email: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    // Atualizar lista
+    await supabase.from('allowed_emails').update({ eligible: newStatus }).eq('email', email);
+    // Atualizar ranking / perfil do usuario instantaneamente
+    await supabase.from('profiles').update({ eligible: newStatus }).eq('email', email);
+    
+    loadEmails();
+    loadProfiles();
+  };
+
   const handleCsvUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!csvFile) return;
@@ -137,11 +148,32 @@ export default function AdminPanel() {
         const email = parts[0]?.trim();
         let ug = parts[1]?.trim().toLowerCase();
         if (ug !== 'entregador' && ug !== 'colaborador') ug = 'colaborador';
-        return { email, user_group: ug };
+        
+        let eligible = true;
+        if (parts.length > 2) {
+          const elStr = parts[2]?.trim().toLowerCase();
+          if (elStr === 'inelegivel' || elStr === 'inelegível' || elStr === 'false' || elStr === 'nao' || elStr === 'não') {
+            eligible = false;
+          }
+        }
+        
+        return { email, user_group: ug, eligible };
       }).filter(i => i.email && i.email.includes('@'));
-      const { error } = await supabase.from('allowed_emails').insert(toInsert);
-      if (error) setCsvMessage(`Erro: ${error.message}`);
-      else { setCsvMessage(`🎉 ${toInsert.length} e-mails cadastrados!`); setCsvFile(null); loadEmails(); }
+      
+      const { error } = await supabase.from('allowed_emails').upsert(toInsert, { onConflict: 'email' });
+      
+      if (error) {
+        setCsvMessage(`Erro: ${error.message}`);
+      } else {
+        // Atualiza instantaneamente os perfis (se já estiverem logados/criados)
+        for (const item of toInsert) {
+          await supabase.from('profiles').update({ eligible: item.eligible }).eq('email', item.email);
+        }
+        setCsvMessage(`🎉 ${toInsert.length} e-mails carregados/atualizados!`);
+        setCsvFile(null); 
+        loadEmails();
+        loadProfiles();
+      }
     };
     reader.readAsText(csvFile);
   };
@@ -618,8 +650,14 @@ export default function AdminPanel() {
                   <div>
                     <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#0F1849' }}>{item.email}</span>
                     <br /><span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>{item.user_group}</span>
+                    {item.eligible === false && <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>Inelegível</span>}
                   </div>
-                  <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button onClick={() => handleToggleEligibility(item.email, item.eligible !== false)} style={{ padding: '0.4rem 0.8rem', backgroundColor: item.eligible !== false ? '#10b981' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      {item.eligible !== false ? '✅ Elegível' : '❌ Inelegível'}
+                    </button>
+                    <button onClick={() => handleDeleteEmail(item.id, item.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
+                  </div>
                 </div>
               ))}
             </div>
