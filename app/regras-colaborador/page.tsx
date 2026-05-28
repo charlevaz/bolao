@@ -82,7 +82,7 @@ export default async function RegrasColaborador() {
       <section style={{ marginBottom: '3rem' }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#60a5fa' }}>Regras Gerais (Colaboradores)</h2>
         <ul style={{ listStylePosition: 'inside', opacity: 0.9, paddingLeft: '1rem', lineHeight: '1.8' }}>
-          <li>Apenas colaboradores convidados pela gerência (franquias: Sumarezinho, Aldeota e Recreio) poderão participar;</li>
+          <li>Apenas colaboradores ativos das 3 franquias (Sumarezinho, Aldeota e Recreio) poderão participar. Não é mais necessário pagar nenhuma taxa para participar;</li>
           <li>Será permitido apenas 1 palpite por jogo por E-mail;</li>
           <li>Os palpites devem ser enviados antes do início da partida;</li>
           <li>Não será permitido alterar palpites após o fechamento.</li>

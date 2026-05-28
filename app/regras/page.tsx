@@ -53,7 +53,7 @@ export default function Regras() {
       <section style={{ marginBottom: '3rem' }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#60a5fa' }}>Regras Gerais</h2>
         <ul style={{ listStylePosition: 'inside', opacity: 0.9, paddingLeft: '1rem', lineHeight: '1.8' }}>
-          <li>Para ser elegível para receber o prêmio, caso ganhe, tem que fazer 10 pedidos completos por semana no período da promoção e estar ativo em uma das 3 franquias (Sumarezinho, Aldeota ou Recreio);</li>
+          <li>Para ser elegível ao prêmio, o entregador precisa ter feito pelo menos 10 rotas completas por semana durante a promoção. Para entregadores novos, a contagem inicia a partir da segunda semana que o cadastro foi ativado. No período de apuração final da Copa, é obrigatório estar ativo em uma das 3 franquias (Sumarezinho, Aldeota ou Recreio);</li>
           <li>Será permitido apenas 1 palpite por jogo por CPF;</li>
           <li>Os palpites devem ser enviados antes do início da partida;</li>
           <li>Não será permitido alterar palpites após o fechamento.</li>
