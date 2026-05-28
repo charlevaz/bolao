@@ -23,17 +23,30 @@ export async function GET() {
     }
 
     // Mapear os 104 jogos para o formato do nosso banco de dados
-    const matches = data.matches.map((item: any) => ({
-      team_a: item.team1,
-      team_b: item.team2,
-      flag_a: flagMap[item.team1] || 'un',
-      flag_b: flagMap[item.team2] || 'un',
-      match_date: new Date(`${item.date}T${item.time.split(' ')[0]}:00-06:00`).toISOString(),
-      // item.group é usado na fase de grupos ("Group A"), item.round nas eliminatórias
-      group_name: item.group || item.round || 'A Definir',
-      venue: item.ground || 'A Definir',
-      status: 'pending'
-    }));
+    const matches = data.matches.map((item: any) => {
+      // Parse timezone from "HH:MM UTC-X"
+      const timeParts = item.time.split(' UTC');
+      let timeString = timeParts[0];
+      let offsetString = '-06:00'; // Fallback
+      if (timeParts.length > 1) {
+        const offset = timeParts[1]; // e.g. "-4", "-7"
+        const sign = offset.startsWith('-') ? '-' : '+';
+        const hours = offset.replace(/[+-]/, '').padStart(2, '0');
+        offsetString = `${sign}${hours}:00`;
+      }
+      
+      return {
+        team_a: item.team1,
+        team_b: item.team2,
+        flag_a: flagMap[item.team1] || 'un',
+        flag_b: flagMap[item.team2] || 'un',
+        match_date: new Date(`${item.date}T${timeString}:00${offsetString}`).toISOString(),
+        // item.group é usado na fase de grupos ("Group A"), item.round nas eliminatórias
+        group_name: item.group || item.round || 'A Definir',
+        venue: item.ground || 'A Definir',
+        status: 'pending'
+      };
+    });
 
     return NextResponse.json({ matches });
   } catch (err: any) {
