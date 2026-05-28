@@ -13,13 +13,15 @@ export default async function Home() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem' }}>
       
-      {/* Espaço para a Logo */}
-      <div style={{ width: '150px', height: '150px', backgroundColor: '#ffffff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem', color: '#0F1849', fontWeight: 'bold', textAlign: 'center' }}>
-        [Sua Logo Aqui]
+      {/* Logotipos */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', justifyContent: 'center', backgroundColor: '#fff', padding: '1rem', borderRadius: '16px' }}>
+        <img src="/logos/logo-sumarezinho.png" alt="EntreGô Sumarezinho" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
+        <img src="/logos/logo-aldeota.png" alt="EntreGô Aldeota" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
+        <img src="/logos/logo-recreio.png" alt="EntreGô Recreio" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
       </div>
 
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', textAlign: 'center' }}>
-        Bolão <span style={{ color: '#2C67EA' }}>Entrego Sumarezinho</span>
+        Bolão <span style={{ color: '#2C67EA' }}>EntreGô Sumarezinho, Aldeota e Recreio</span>
       </h1>
       
       <p style={{ fontSize: '1.2rem', marginBottom: '3rem', textAlign: 'center', maxWidth: '600px', opacity: 0.9 }}>

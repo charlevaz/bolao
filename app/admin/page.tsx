@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 
-const TABS = ['ranking', 'usuarios', 'emails', 'dicionario', 'jogos', 'fases', 'bolao'] as const;
+const TABS = ['ranking', 'usuarios', 'emails', 'dicionario', 'jogos', 'fases'] as const;
 type Tab = typeof TABS[number];
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -14,7 +14,6 @@ const TAB_LABELS: Record<Tab, string> = {
   dicionario: '🌍 Dicionário',
   jogos:      '⚽ Jogos',
   fases:      '🔓 Fases',
-  bolao:      '💰 Bolão Colaborador',
 };
 
 const PHASES = [
@@ -836,81 +835,6 @@ CREATE POLICY "public_read" ON public.phase_settings FOR SELECT USING (true);`}
           </div>
         )}
 
-        {/* ── TAB: BOLÃO COLABORADOR ────────────────────────────────────── */}
-        {activeTab === 'bolao' && (() => {
-          const paidCount = colabEmails.filter(e => e.paid).length;
-          const totalPool = paidCount * Number(poolSettings.value_per_person);
-          const prize1 = (totalPool * Number(poolSettings.pct_1st)) / 100;
-          const prize2 = (totalPool * Number(poolSettings.pct_2nd)) / 100;
-          const prize3 = (totalPool * Number(poolSettings.pct_3rd)) / 100;
-
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
-              {/* AVISO SE TABELA NÃO CRIADA */}
-              {!poolLoaded && (
-                <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '12px', padding: '1.5rem' }}>
-                  <h3 style={{ color: '#b45309', margin: '0 0 0.8rem 0' }}>⚠️ Tabela não encontrada</h3>
-                  <p style={{ color: '#92400e', fontSize: '0.9rem', margin: '0 0 1rem 0' }}>
-                    Rode o SQL abaixo no Supabase SQL Editor para ativar esta aba:
-                  </p>
-                  <pre style={{ backgroundColor: '#fff', padding: '0.8rem', borderRadius: '6px', fontSize: '0.75rem', overflowX: 'auto', color: '#333' }}>
-{`ALTER TABLE public.allowed_emails ADD COLUMN IF NOT EXISTS paid BOOLEAN DEFAULT false;
-
-CREATE TABLE IF NOT EXISTS public.pool_settings (
-  id INTEGER PRIMARY KEY DEFAULT 1,
-  value_per_person NUMERIC DEFAULT 10,
-  pct_1st NUMERIC DEFAULT 50, pct_2nd NUMERIC DEFAULT 30, pct_3rd NUMERIC DEFAULT 20,
-  prize_4th TEXT DEFAULT '', prize_5th TEXT DEFAULT '', prize_6th TEXT DEFAULT '',
-  prize_7th TEXT DEFAULT '', prize_8th TEXT DEFAULT '', prize_9th TEXT DEFAULT '',
-  prize_10th TEXT DEFAULT '', config_locked BOOLEAN DEFAULT false,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE public.pool_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "admin_pool_all" ON public.pool_settings FOR ALL
-  USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin')
-  WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
-CREATE POLICY "public_pool_read" ON public.pool_settings FOR SELECT USING (true);
-INSERT INTO public.pool_settings (id, value_per_person, pct_1st, pct_2nd, pct_3rd)
-VALUES (1, 10, 50, 30, 20) ON CONFLICT (id) DO NOTHING;`}
-                  </pre>
-                  <button onClick={loadPoolSettings} style={{ marginTop: '1rem', padding: '0.6rem 1.2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                    🔄 Verificar novamente
-                  </button>
-                </div>
-              )}
-
-              {poolLoaded && (<>
-
-                {/* PAINEL RESUMO */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                  {[
-                    { label: 'Total de Colaboradores', value: colabEmails.length, color: '#2C67EA', icon: '👥' },
-                    { label: 'Pagamentos Confirmados', value: paidCount, color: '#10b981', icon: '✅' },
-                  ].map(card => (
-                    <div key={card.label} style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '1.2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.8rem' }}>{card.icon}</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: '900', color: card.color, marginTop: '0.3rem' }}>{card.value}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.2rem' }}>{card.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* LISTA DE COLABORADORES + PAGAMENTOS */}
-                <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.08)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-                    <h2 style={{ margin: 0, color: '#0F1849' }}>💳 Controle de Pagamentos</h2>
-                    <button onClick={loadColabEmails} style={{ padding: '0.5rem 1rem', backgroundColor: '#f0f4f8', color: '#0F1849', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                      🔄 Atualizar
-                    </button>
-                  </div>
-                  <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '10px' }}>
-                    {colabEmails.map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1rem', borderBottom: '1px solid #f8fafc', backgroundColor: item.paid ? '#f0fdf4' : '#fff' }}>
-                        <div>
-                          <span style={{ fontWeight: '700', color: '#0F1849', fontSize: '0.95rem' }}>{item.email}</span>
-                          <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', backgroundColor: '#f0f4f8', color: '#64748b', padding: '2px 6px', borderRadius: '8px' }}>colaborador</span>
-                          {item.paid && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '8px', fontWeight: 'bold' }}>✅ Pago</span>}
                         </div>
                         <button
                           onClick={() => handleTogglePaid(item.id, item.paid ?? false)}

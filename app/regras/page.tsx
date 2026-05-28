@@ -6,7 +6,7 @@ export default function Regras() {
       <Link href="/" style={{ color: '#60a5fa', marginBottom: '2rem', display: 'inline-block' }}>← Voltar para a Home</Link>
       
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#fff', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center' }}>
-        Bolão EntreGô Sumarezinho
+        Bolão EntreGô Sumarezinho, Aldeota e Recreio
       </h1>
       <h2 style={{ fontSize: '1.5rem', marginBottom: '2rem', color: '#60a5fa', textTransform: 'uppercase', textAlign: 'center' }}>
         Copa do Mundo 2026
@@ -53,11 +53,11 @@ export default function Regras() {
       <section style={{ marginBottom: '3rem' }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#60a5fa' }}>Regras Gerais</h2>
         <ul style={{ listStylePosition: 'inside', opacity: 0.9, paddingLeft: '1rem', lineHeight: '1.8' }}>
-          <li>Apenas entregadores da EntreGô Sumarezinho poderão participar;</li>
+          <li>Para ser elegível para receber o prêmio, caso ganhe, tem que fazer 10 pedidos completos por semana no período da promoção e estar ativo em uma das 3 franquias (Sumarezinho, Aldeota ou Recreio);</li>
           <li>Será permitido apenas 1 palpite por jogo por CPF;</li>
           <li>Os palpites devem ser enviados antes do início da partida;</li>
           <li>Não será permitido alterar palpites após o fechamento.</li>
-          <li>Válido durante a copa (11 de Junho a 19 de Julho)</li>
+          <li>Válido durante a copa (11 de Junho a 19 de Julho).</li>
         </ul>
         <p style={{ marginTop: '1.5rem', opacity: 0.9 }}>
           Ao final da Copa, os 50 entregadores com maior pontuação no ranking geral serão premiados.
