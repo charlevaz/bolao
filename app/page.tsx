@@ -15,9 +15,9 @@ export default async function Home() {
       
       {/* Logotipos */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', justifyContent: 'center', backgroundColor: '#fff', padding: '1rem', borderRadius: '16px' }}>
-        <img src="/logos/logo-sumarezinho.png" alt="EntreGô Sumarezinho" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
-        <img src="/logos/logo-aldeota.png" alt="EntreGô Aldeota" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
-        <img src="/logos/logo-recreio.png" alt="EntreGô Recreio" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
+        <img src="/logo-sumarezinho.png" alt="EntreGô Sumarezinho" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
+        <img src="/logo-aldeota.png" alt="EntreGô Aldeota" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
+        <img src="/logo-recreio.png" alt="EntreGô Recreio" style={{ height: '80px', width: 'auto', objectFit: 'contain' }} />
       </div>
 
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', textAlign: 'center' }}>
