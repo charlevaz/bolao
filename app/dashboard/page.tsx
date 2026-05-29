@@ -92,12 +92,16 @@ export default function Dashboard() {
         if (topData) setTopUsers(topData);
       }
 
-      // 3. Carregar Jogos
-      const { data: matchesData } = await supabase
-        .from('matches')
-        .select('*')
-        .order('match_date', { ascending: true });
-        
+      // 3-6. Carregar Jogos, Palpites, Traduções e Fases em PARALELO (otimização de performance)
+      const [matchesRes, guessesRes, transRes, phasesRes] = await Promise.all([
+        supabase.from('matches').select('*').order('match_date', { ascending: true }),
+        supabase.from('guesses').select('*').eq('user_id', user.id),
+        supabase.from('team_translations').select('*'),
+        supabase.from('phase_settings').select('*'),
+      ]);
+
+      // Processar Jogos
+      const matchesData = matchesRes.data;
       if (matchesData && matchesData.length > 0) {
         setMatches(matchesData);
         
@@ -124,12 +128,8 @@ export default function Dashboard() {
         if (daysFormat.length > 0) setSelectedDay(daysFormat[0].date);
       }
 
-      // 4. Carregar Palpites
-      const { data: guessesData } = await supabase
-        .from('guesses')
-        .select('*')
-        .eq('user_id', user.id);
-        
+      // Processar Palpites
+      const guessesData = guessesRes.data;
       if (guessesData) {
         setGuesses(guessesData);
         const initialInputs: any = {};
@@ -139,8 +139,8 @@ export default function Dashboard() {
         setInputScores(initialInputs);
       }
 
-      // 5. Carregar Dicionário de Traduções
-      const { data: transData } = await supabase.from('team_translations').select('*');
+      // Processar Traduções
+      const transData = transRes.data;
       if (transData) {
         const tMap: any = {};
         transData.forEach(t => {
@@ -149,8 +149,8 @@ export default function Dashboard() {
         setTranslations(tMap);
       }
 
-      // 6. Carregar configurações de fases
-      const { data: phasesData } = await supabase.from('phase_settings').select('*');
+      // Processar Fases
+      const phasesData = phasesRes.data;
       if (phasesData) {
         const pMap: any = {};
         phasesData.forEach((p: any) => { pMap[p.phase_key] = p.is_open; });
@@ -175,7 +175,7 @@ export default function Dashboard() {
     setInputScores(prev => {
       const current = prev[matchId] || { a: null, b: null };
       const currentVal = current[team] ?? 0;
-      const newVal = Math.max(0, currentVal + delta);
+      const newVal = Math.min(99, Math.max(0, currentVal + delta));
       return { ...prev, [matchId]: { ...current, [team]: newVal } };
     });
   };
@@ -215,6 +215,18 @@ export default function Dashboard() {
     if (error) {
       if (error.message.includes('Acesso Negado')) {
         setMessage({...message, [matchId]: '❌ Palpite bloqueado (Falta menos de 1h)'});
+      } else if (error.message.includes('guesses_user_match_unique') || error.message.includes('duplicate key')) {
+        // Constraint UNIQUE violada — palpite já existe (ex: duas abas abertas). Forçar UPDATE.
+        const { data: existingData } = await supabase.from('guesses').select('id').eq('user_id', profile.id).eq('match_id', matchId).single();
+        if (existingData) {
+          await supabase.from('guesses').update({ guess_score_a: scoreA, guess_score_b: scoreB }).eq('id', existingData.id);
+          setMessage({...message, [matchId]: '✅ Salvo!'});
+          const { data } = await supabase.from('guesses').select('*').eq('user_id', profile.id);
+          if (data) setGuesses(data);
+          setTimeout(() => setMessage(prev => ({...prev, [matchId]: ''})), 2000);
+          return;
+        }
+        setMessage({...message, [matchId]: `Erro: ${error.message}`});
       } else {
         setMessage({...message, [matchId]: `Erro: ${error.message}`});
       }
@@ -275,9 +287,10 @@ export default function Dashboard() {
     const g = groupName.toLowerCase();
     if (g.startsWith('group') || g.startsWith('grupo')) return null; // fase de grupos = sempre aberta
     if (g.includes('round of 32') || g.includes('oitavas')) return 'round_of_32';
-    if (g.includes('round of 16') || g.includes('quartas')) return 'round_of_16';
-    if (g.includes('quarter') || g.includes('semi')) return 'quarter';
-    if (g.includes('semi') || g.includes('final') && g.includes('3')) return 'semi';
+    if (g.includes('round of 16')) return 'round_of_16';
+    if (g.includes('third place') || g.includes('terceiro')) return 'semi'; // 3º lugar abre junto com semi
+    if (g.includes('semi')) return 'semi';
+    if (g.includes('quarter') || g.includes('quartas')) return 'quarter';
     if (g.includes('final')) return 'final';
     return 'final'; // qualquer fase não reconhecida = trata como eliminatória bloqueada
   };
