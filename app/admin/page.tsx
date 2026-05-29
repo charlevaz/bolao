@@ -119,6 +119,12 @@ export default function AdminPanel() {
   };
 
   const handleDeleteEmail = async (id: string, email: string) => {
+    const isAdminUser = profiles.some(p => p.email === email && p.role === 'admin');
+    if (isAdminUser) {
+      alert(`⚠️ Não é possível remover o e-mail ${email} porque ele pertence a um Administrador. Remova o acesso de Admin primeiro na aba Usuários.`);
+      return;
+    }
+
     if (!window.confirm(`Remover autorização de ${email}?`)) return;
     await supabase.from('allowed_emails').delete().eq('id', id);
     loadEmails();
@@ -126,13 +132,29 @@ export default function AdminPanel() {
 
   const handleBulkDelete = async () => {
     if (selectedEmails.length === 0) return;
-    if (!window.confirm(`Tem certeza que deseja remover os ${selectedEmails.length} e-mails selecionados?`)) return;
+
+    // Filtrar admins
+    const adminEmails = profiles.filter(p => p.role === 'admin').map(p => p.email);
+    const emailsToDelete = selectedEmails.filter(e => !adminEmails.includes(e));
+    const adminsToSkip = selectedEmails.filter(e => adminEmails.includes(e));
+
+    if (emailsToDelete.length === 0) {
+      alert('⚠️ Todos os e-mails selecionados pertencem a Administradores e não podem ser removidos.');
+      return;
+    }
+
+    let confirmMsg = `Tem certeza que deseja remover os ${emailsToDelete.length} e-mails selecionados?`;
+    if (adminsToSkip.length > 0) {
+      confirmMsg += `\n\n(Nota de segurança: ${adminsToSkip.length} e-mail(s) de Administrador foram protegidos e NÃO serão apagados).`;
+    }
+
+    if (!window.confirm(confirmMsg)) return;
     
     // Deleta em lotes (chunks) de 50 para evitar erro de URL muito longa no Supabase (414 URI Too Long)
     const chunkSize = 50;
     let hasError = false;
-    for (let i = 0; i < selectedEmails.length; i += chunkSize) {
-      const chunk = selectedEmails.slice(i, i + chunkSize);
+    for (let i = 0; i < emailsToDelete.length; i += chunkSize) {
+      const chunk = emailsToDelete.slice(i, i + chunkSize);
       const { error } = await supabase.from('allowed_emails').delete().in('email', chunk);
       if (error) {
         console.error('Erro ao deletar lote:', error);
@@ -143,7 +165,7 @@ export default function AdminPanel() {
     if (hasError) {
       alert('Ocorreu um erro ao tentar remover alguns e-mails. Verifique sua conexão ou tente selecionar uma quantidade menor.');
     } else {
-      alert(`✅ ${selectedEmails.length} e-mails removidos com sucesso!`);
+      alert(`✅ ${emailsToDelete.length} e-mails removidos com sucesso!`);
     }
     
     setSelectedEmails([]);
@@ -227,17 +249,27 @@ export default function AdminPanel() {
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       
       // Assume a primeira coluna é o e-mail (ignora cabeçalhos se não for e-mail)
-      const emailsToRemove = lines.map(line => {
+      const rawEmailsToRemove = lines.map(line => {
         const parts = line.split(',');
         return parts[0]?.trim();
       }).filter(email => email && email.includes('@'));
+
+      // Filtrar admins
+      const adminEmails = profiles.filter(p => p.role === 'admin').map(p => p.email);
+      const emailsToRemove = rawEmailsToRemove.filter(e => !adminEmails.includes(e));
+      const adminsToSkip = rawEmailsToRemove.filter(e => adminEmails.includes(e));
       
       if (emailsToRemove.length === 0) {
-        setCsvMessage('Nenhum e-mail válido encontrado no CSV.');
+        setCsvMessage('Nenhum e-mail válido para remover (os encontrados são admins protegidos).');
         return;
       }
 
-      if (!window.confirm(`Tem certeza que deseja remover ${emailsToRemove.length} e-mails autorizados em massa?`)) {
+      let confirmMsg = `Tem certeza que deseja remover ${emailsToRemove.length} e-mails autorizados em massa?`;
+      if (adminsToSkip.length > 0) {
+        confirmMsg += `\n\n(Nota de segurança: ${adminsToSkip.length} e-mail(s) de Administrador na planilha foram protegidos).`;
+      }
+
+      if (!window.confirm(confirmMsg)) {
         setCsvMessage('');
         return;
       }
