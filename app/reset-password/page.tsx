@@ -19,6 +19,16 @@ export default function ResetPassword() {
     const code = params.get('code');
 
     if (code) {
+      // FIX: O componente Auth UI do Supabase tem um bug conhecido onde ele salva o PKCE verifier
+      // no localStorage em vez de usar os cookies do @supabase/ssr.
+      // Aqui nós pegamos o verifier do localStorage e forçamos ele para os cookies antes de validar.
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && key.endsWith('-code-verifier')) {
+          document.cookie = `${key}=${window.localStorage.getItem(key)}; path=/; max-age=3600; SameSite=Lax`;
+        }
+      }
+
       // Forçar a troca do código na sessão pelo cliente
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         if (error) {
