@@ -14,7 +14,22 @@ export default function ResetPassword() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    // Escuta o evento de recuperação de senha do Supabase
+    // 1. Verificar se existe um code na URL
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+
+    if (code) {
+      // Forçar a troca do código na sessão pelo cliente
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (error) {
+          setError(`Erro ao validar o link de recuperação: ${error.message}. Certifique-se de abrir o link no MESMO navegador que solicitou a troca.`);
+        } else {
+          setMessage('Código validado com sucesso! Digite sua nova senha abaixo.');
+        }
+      });
+    }
+
+    // 2. Escuta o evento de recuperação de senha do Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setMessage('Autenticado com sucesso para recuperação. Digite sua nova senha abaixo.');
