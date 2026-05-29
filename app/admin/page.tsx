@@ -177,6 +177,43 @@ export default function AdminPanel() {
     reader.readAsText(csvFile);
   };
 
+  const handleCsvRemove = async () => {
+    if (!csvFile) return;
+    setCsvMessage('Lendo planilha para remoção...');
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      
+      // Assume a primeira coluna é o e-mail (ignora cabeçalhos se não for e-mail)
+      const emailsToRemove = lines.map(line => {
+        const parts = line.split(',');
+        return parts[0]?.trim();
+      }).filter(email => email && email.includes('@'));
+      
+      if (emailsToRemove.length === 0) {
+        setCsvMessage('Nenhum e-mail válido encontrado no CSV.');
+        return;
+      }
+
+      if (!window.confirm(`Tem certeza que deseja remover ${emailsToRemove.length} e-mails autorizados em massa?`)) {
+        setCsvMessage('');
+        return;
+      }
+
+      const { error } = await supabase.from('allowed_emails').delete().in('email', emailsToRemove);
+      
+      if (error) {
+        setCsvMessage(`Erro ao remover: ${error.message}`);
+      } else {
+        setCsvMessage(`🗑️ ${emailsToRemove.length} e-mails removidos com sucesso!`);
+        setCsvFile(null); 
+        loadEmails();
+      }
+    };
+    reader.readAsText(csvFile);
+  };
+
   // ── Profiles ──────────────────────────────────────────────────────────────
   const loadProfiles = async () => {
     const { data } = await supabase.from('profiles').select('*').order('points', { ascending: false });
@@ -634,10 +671,18 @@ export default function AdminPanel() {
                 {emailMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{emailMessage}</div>}
               </div>
               <div>
-                <h3 style={{ color: '#666', marginBottom: '1rem' }}>Importar CSV</h3>
+                <h3 style={{ color: '#666', marginBottom: '0.5rem' }}>Importar CSV</h3>
+                <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
+                  Formato esperado (sem cabeçalho):<br/>
+                  <b>email,grupo,elegibilidade</b><br/>
+                  Ex: <i>joao@email.com,entregador,sim</i>
+                </p>
                 <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
-                  <button type="submit" disabled={!csvFile} style={{ padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: csvFile ? 'pointer' : 'not-allowed' }}>Enviar Planilha</button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="submit" disabled={!csvFile} style={{ flex: 1, padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: csvFile ? 'pointer' : 'not-allowed' }}>Adicionar em Massa</button>
+                    <button type="button" onClick={handleCsvRemove} disabled={!csvFile} style={{ flex: 1, padding: '0.8rem', backgroundColor: csvFile ? '#ef4444' : '#ccc', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: csvFile ? 'pointer' : 'not-allowed' }}>Remover em Massa</button>
+                  </div>
                 </form>
                 {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
               </div>
