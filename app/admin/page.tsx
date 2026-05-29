@@ -39,7 +39,7 @@ export default function AdminPanel() {
   const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvMessage, setCsvMessage] = useState('');
-  const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Users (profiles)
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -131,58 +131,72 @@ export default function AdminPanel() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedEmails.length === 0) return;
+    if (selectedIds.length === 0) return;
 
-    // Filtrar admins
+    // Identificar quais e-mails pertencem a admins para proteger
     const adminEmails = profiles.filter(p => p.role === 'admin').map(p => p.email);
-    const emailsToDelete = selectedEmails.filter(e => !adminEmails.includes(e));
-    const adminsToSkip = selectedEmails.filter(e => adminEmails.includes(e));
+    
+    const idsToDelete: string[] = [];
+    let skipCount = 0;
+    
+    for (const id of selectedIds) {
+      const item = allowedEmails.find(a => a.id === id);
+      if (item && adminEmails.includes(item.email)) {
+        skipCount++;
+      } else {
+        idsToDelete.push(id);
+      }
+    }
 
-    if (emailsToDelete.length === 0) {
+    if (idsToDelete.length === 0) {
       alert('⚠️ Todos os e-mails selecionados pertencem a Administradores e não podem ser removidos.');
       return;
     }
 
-    let confirmMsg = `Tem certeza que deseja remover os ${emailsToDelete.length} e-mails selecionados?`;
-    if (adminsToSkip.length > 0) {
-      confirmMsg += `\n\n(Nota de segurança: ${adminsToSkip.length} e-mail(s) de Administrador foram protegidos e NÃO serão apagados).`;
+    let confirmMsg = `Tem certeza que deseja remover os ${idsToDelete.length} e-mails selecionados?`;
+    if (skipCount > 0) {
+      confirmMsg += `\n\n(Nota de segurança: ${skipCount} e-mail(s) de Administrador foram protegidos e NÃO serão apagados).`;
     }
 
     if (!window.confirm(confirmMsg)) return;
     
-    // Deleta em lotes (chunks) de 50 para evitar erro de URL muito longa no Supabase (414 URI Too Long)
-    const chunkSize = 50;
+    const chunkSize = 20; // Reduzido para 20 para garantir que a URL fique curta
     let hasError = false;
-    for (let i = 0; i < emailsToDelete.length; i += chunkSize) {
-      const chunk = emailsToDelete.slice(i, i + chunkSize);
-      const { error } = await supabase.from('allowed_emails').delete().in('email', chunk);
+    let successCount = 0;
+    
+    for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+      const chunk = idsToDelete.slice(i, i + chunkSize);
+      // Ao deletar por ID evitamos qualquer bug do PostgREST com caracteres especiais no e-mail
+      const { data, error } = await supabase.from('allowed_emails').delete().in('id', chunk).select('id');
       if (error) {
         console.error('Erro ao deletar lote:', error);
         hasError = true;
+      } else if (data) {
+        successCount += data.length;
       }
     }
     
     if (hasError) {
-      alert('Ocorreu um erro ao tentar remover alguns e-mails. Verifique sua conexão ou tente selecionar uma quantidade menor.');
+      alert(`Ocorreu um erro ao tentar remover alguns e-mails. ${successCount} foram removidos com sucesso.`);
     } else {
-      alert(`✅ ${emailsToDelete.length} e-mails removidos com sucesso!`);
+      alert(`✅ ${successCount} e-mails removidos com sucesso!`);
     }
     
-    setSelectedEmails([]);
+    setSelectedIds([]);
     loadEmails();
   };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedEmails(allowedEmails.map(a => a.email));
+      setSelectedIds(allowedEmails.map(a => a.id));
     } else {
-      setSelectedEmails([]);
+      setSelectedIds([]);
     }
   };
 
-  const handleSelectEmail = (email: string) => {
-    setSelectedEmails(prev => 
-      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+  const handleSelectId = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
     );
   };
 
@@ -773,9 +787,9 @@ export default function AdminPanel() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ color: '#666', margin: 0 }}>E-mails Autorizados ({allowedEmails.length})</h3>
-              {selectedEmails.length > 0 && (
+              {selectedIds.length > 0 && (
                 <button onClick={handleBulkDelete} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  🗑️ Remover Selecionados ({selectedEmails.length})
+                  🗑️ Remover Selecionados ({selectedIds.length})
                 </button>
               )}
             </div>
@@ -785,7 +799,7 @@ export default function AdminPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', padding: '0.8rem', borderBottom: '2px solid #eee', backgroundColor: '#f9fafb', position: 'sticky', top: 0, zIndex: 10 }}>
                   <input 
                     type="checkbox" 
-                    checked={selectedEmails.length === allowedEmails.length && allowedEmails.length > 0} 
+                    checked={selectedIds.length === allowedEmails.length && allowedEmails.length > 0} 
                     onChange={handleSelectAll} 
                     style={{ marginRight: '1rem', width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
                   />
@@ -793,12 +807,12 @@ export default function AdminPanel() {
                 </div>
               )}
               {allowedEmails.map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedEmails.includes(item.email) ? '#eff6ff' : '#fff' }}>
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedIds.includes(item.id) ? '#eff6ff' : '#fff' }}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <input 
                       type="checkbox" 
-                      checked={selectedEmails.includes(item.email)} 
-                      onChange={() => handleSelectEmail(item.email)} 
+                      checked={selectedIds.includes(item.id)} 
+                      onChange={() => handleSelectId(item.id)} 
                       style={{ marginRight: '1rem', width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
                     />
                     <div>
