@@ -39,6 +39,7 @@ export default function AdminPanel() {
   const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvMessage, setCsvMessage] = useState('');
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
 
   // Users (profiles)
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -121,6 +122,29 @@ export default function AdminPanel() {
     if (!window.confirm(`Remover autorização de ${email}?`)) return;
     await supabase.from('allowed_emails').delete().eq('id', id);
     loadEmails();
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedEmails.length === 0) return;
+    if (!window.confirm(`Tem certeza que deseja remover os ${selectedEmails.length} e-mails selecionados?`)) return;
+    
+    await supabase.from('allowed_emails').delete().in('email', selectedEmails);
+    setSelectedEmails([]);
+    loadEmails();
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedEmails(allowedEmails.map(a => a.email));
+    } else {
+      setSelectedEmails([]);
+    }
+  };
+
+  const handleSelectEmail = (email: string) => {
+    setSelectedEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
   };
 
   const handleToggleEligibility = async (email: string, currentStatus: boolean) => {
@@ -687,14 +711,41 @@ export default function AdminPanel() {
                 {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
               </div>
             </div>
-            <h3 style={{ color: '#666', marginBottom: '1rem' }}>E-mails Autorizados ({allowedEmails.length})</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ color: '#666', margin: 0 }}>E-mails Autorizados ({allowedEmails.length})</h3>
+              {selectedEmails.length > 0 && (
+                <button onClick={handleBulkDelete} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  🗑️ Remover Selecionados ({selectedEmails.length})
+                </button>
+              )}
+            </div>
+            
             <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+              {allowedEmails.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', padding: '0.8rem', borderBottom: '2px solid #eee', backgroundColor: '#f9fafb', position: 'sticky', top: 0, zIndex: 10 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={selectedEmails.length === allowedEmails.length && allowedEmails.length > 0} 
+                    onChange={handleSelectAll} 
+                    style={{ marginRight: '1rem', width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>Selecionar Todos</span>
+                </div>
+              )}
               {allowedEmails.map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
-                  <div>
-                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#0F1849' }}>{item.email}</span>
-                    <br /><span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>{item.user_group}</span>
-                    {item.eligible === false && <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>Inelegível</span>}
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedEmails.includes(item.email) ? '#eff6ff' : '#fff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedEmails.includes(item.email)} 
+                      onChange={() => handleSelectEmail(item.email)} 
+                      style={{ marginRight: '1rem', width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#0F1849' }}>{item.email}</span>
+                      <br /><span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>{item.user_group}</span>
+                      {item.eligible === false && <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>Inelegível</span>}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <button onClick={() => handleToggleEligibility(item.email, item.eligible !== false)} style={{ padding: '0.4rem 0.8rem', backgroundColor: item.eligible !== false ? '#10b981' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
