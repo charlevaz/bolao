@@ -14,7 +14,9 @@ export async function GET(request: Request) {
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`)
     }
+    // Se der erro na troca do código, enviar a mensagem de erro na URL para depuração
+    return NextResponse.redirect(`${origin}/login?message=${encodeURIComponent(`Erro na autenticação: ${error.message}`)}`)
   }
 
-  return NextResponse.redirect(`${origin}/login?message=Não foi possível autenticar`)
+  return NextResponse.redirect(`${origin}/login?message=${encodeURIComponent('Código de autenticação não encontrado na URL.')}`)
 }
