@@ -29,14 +29,10 @@ export default function ResetPassword() {
         }
       }
 
-      // Forçar a troca do código na sessão pelo cliente
-      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-        if (error) {
-          setError(`Erro ao validar o link de recuperação: ${error.message}. Certifique-se de abrir o link no MESMO navegador que solicitou a troca.`);
-        } else {
-          setMessage('Código validado com sucesso! Digite sua nova senha abaixo.');
-        }
-      });
+      // O SDK do Supabase (@supabase/supabase-js) detecta o parâmetro ?code= na URL 
+      // e faz a troca (exchange) automaticamente. Não precisamos (e não devemos) 
+      // chamar exchangeCodeForSession manualmente aqui, senão ele tenta usar o código 
+      // duas vezes e gera um falso erro de "PKCE code verifier not found".
     }
 
     // 2. Escuta o evento de recuperação de senha do Supabase
