@@ -128,7 +128,24 @@ export default function AdminPanel() {
     if (selectedEmails.length === 0) return;
     if (!window.confirm(`Tem certeza que deseja remover os ${selectedEmails.length} e-mails selecionados?`)) return;
     
-    await supabase.from('allowed_emails').delete().in('email', selectedEmails);
+    // Deleta em lotes (chunks) de 50 para evitar erro de URL muito longa no Supabase (414 URI Too Long)
+    const chunkSize = 50;
+    let hasError = false;
+    for (let i = 0; i < selectedEmails.length; i += chunkSize) {
+      const chunk = selectedEmails.slice(i, i + chunkSize);
+      const { error } = await supabase.from('allowed_emails').delete().in('email', chunk);
+      if (error) {
+        console.error('Erro ao deletar lote:', error);
+        hasError = true;
+      }
+    }
+    
+    if (hasError) {
+      alert('Ocorreu um erro ao tentar remover alguns e-mails. Verifique sua conexão ou tente selecionar uma quantidade menor.');
+    } else {
+      alert(`✅ ${selectedEmails.length} e-mails removidos com sucesso!`);
+    }
+    
     setSelectedEmails([]);
     loadEmails();
   };
@@ -225,10 +242,21 @@ export default function AdminPanel() {
         return;
       }
 
-      const { error } = await supabase.from('allowed_emails').delete().in('email', emailsToRemove);
+      const chunkSize = 50;
+      let hasError = false;
+      let lastError = '';
       
-      if (error) {
-        setCsvMessage(`Erro ao remover: ${error.message}`);
+      for (let i = 0; i < emailsToRemove.length; i += chunkSize) {
+        const chunk = emailsToRemove.slice(i, i + chunkSize);
+        const { error } = await supabase.from('allowed_emails').delete().in('email', chunk);
+        if (error) {
+          hasError = true;
+          lastError = error.message;
+        }
+      }
+      
+      if (hasError) {
+        setCsvMessage(`Erro ao remover alguns e-mails: ${lastError}`);
       } else {
         setCsvMessage(`🗑️ ${emailsToRemove.length} e-mails removidos com sucesso!`);
         setCsvFile(null); 
