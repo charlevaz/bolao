@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
 
 const flagMap: Record<string, string> = {
   'Brazil': 'br', 'Argentina': 'ar', 'Mexico': 'mx', 'USA': 'us', 'Canada': 'ca',
@@ -11,21 +10,6 @@ const flagMap: Record<string, string> = {
 
 export async function GET() {
   try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
-    }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
-    }
-
     const response = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
     
     if (!response.ok) {

@@ -40,6 +40,8 @@ export default function AdminPanel() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvMessage, setCsvMessage] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [emailSearch, setEmailSearch] = useState('');
+  const [emailFilter, setEmailFilter] = useState('todos');
 
   // Users (profiles)
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -78,16 +80,6 @@ export default function AdminPanel() {
   const [poolMessage, setPoolMessage] = useState('');
   const [colabEmails, setColabEmails] = useState<any[]>([]);
 
-  // Loading states for buttons
-  const [loadingEmail, setLoadingEmail] = useState(false);
-  const [loadingCsv, setLoadingCsv] = useState(false);
-  const [loadingBulkDelete, setLoadingBulkDelete] = useState(false);
-  const [loadingSync, setLoadingSync] = useState(false);
-  const [loadingFixGroup, setLoadingFixGroup] = useState(false);
-  const [loadingAudit, setLoadingAudit] = useState(false);
-  const [loadingClear, setLoadingClear] = useState(false);
-  const [loadingPhases, setLoadingPhases] = useState<Record<string, boolean>>({});
-
   const supabase = createClient();
 
   useEffect(() => {
@@ -122,10 +114,8 @@ export default function AdminPanel() {
 
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoadingEmail(true);
     setEmailMessage('Adicionando...');
     const { error } = await supabase.from('allowed_emails').insert([{ email: emailToAdd, user_group: emailGroup }]);
-    setLoadingEmail(false);
     if (error) setEmailMessage(`Erro: ${error.message}`);
     else { setEmailMessage('E-mail autorizado!'); setEmailToAdd(''); loadEmails(); }
   };
@@ -172,7 +162,6 @@ export default function AdminPanel() {
 
     if (!window.confirm(confirmMsg)) return;
     
-    setLoadingBulkDelete(true);
     const chunkSize = 20; // Reduzido para 20 para garantir que a URL fique curta
     let hasError = false;
     let successCount = 0;
@@ -189,7 +178,6 @@ export default function AdminPanel() {
       }
     }
     
-    setLoadingBulkDelete(false);
     if (hasError) {
       alert(`Ocorreu um erro ao tentar remover alguns e-mails. ${successCount} foram removidos com sucesso.`);
     } else {
@@ -202,7 +190,10 @@ export default function AdminPanel() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(allowedEmails.map(a => a.id));
+      const filtered = allowedEmails
+        .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
+        .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()));
+      setSelectedIds(filtered.map(a => a.id));
     } else {
       setSelectedIds([]);
     }
@@ -228,7 +219,6 @@ export default function AdminPanel() {
   const handleCsvUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!csvFile) return;
-    setLoadingCsv(true);
     setCsvMessage('Lendo planilha...');
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -265,14 +255,12 @@ export default function AdminPanel() {
         loadEmails();
         loadProfiles();
       }
-      setLoadingCsv(false);
     };
     reader.readAsText(csvFile);
   };
 
   const handleCsvRemove = async () => {
     if (!csvFile) return;
-    setLoadingCsv(true);
     setCsvMessage('Lendo planilha para remoção...');
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -292,7 +280,6 @@ export default function AdminPanel() {
       
       if (emailsToRemove.length === 0) {
         setCsvMessage('Nenhum e-mail válido para remover (os encontrados são admins protegidos).');
-        setLoadingCsv(false);
         return;
       }
 
@@ -303,7 +290,6 @@ export default function AdminPanel() {
 
       if (!window.confirm(confirmMsg)) {
         setCsvMessage('');
-        setLoadingCsv(false);
         return;
       }
 
@@ -327,7 +313,6 @@ export default function AdminPanel() {
         setCsvFile(null); 
         loadEmails();
       }
-      setLoadingCsv(false);
     };
     reader.readAsText(csvFile);
   };
@@ -382,7 +367,13 @@ export default function AdminPanel() {
         } else if (g.points_earned === 1) statsMap[g.user_id].single_goal++;
       });
     }
-    const sorted = Object.values(statsMap).sort((a: any, b: any) => b.points - a.points);
+    const sorted = Object.values(statsMap).sort((a: any, b: any) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.exact !== a.exact) return b.exact - a.exact;
+      if (b.winner !== a.winner) return b.winner - a.winner;
+      if (b.tie !== a.tie) return b.tie - a.tie;
+      return b.single_goal - a.single_goal;
+    });
     setRanking(sorted);
   };
 
@@ -427,24 +418,31 @@ export default function AdminPanel() {
     loadMatches();
   };
 
-  const handleFinishMatch = async (matchId: string) => {
+  const handleFinishMatch = async (matchId: string, isFinished: boolean) => {
     const sA = scores[matchId]?.a;
     const sB = scores[matchId]?.b;
     if (sA === '' || sB === '') { alert('Digite o placar completo!'); return; }
-    if (!window.confirm('Encerrar o jogo e distribuir pontos?')) return;
-    const { error } = await supabase.rpc('finish_match', { p_match_id: matchId, p_real_score_a: parseInt(sA), p_real_score_b: parseInt(sB) });
-    if (error) alert(`Erro: ${error.message}`);
-    else { alert('Pontos distribuídos!'); loadMatches(); }
+    
+    if (isFinished) {
+      if (!window.confirm('Atenção: Este jogo já foi finalizado. Tem certeza que deseja RECALCULAR os pontos baseando-se nesse novo placar? Os pontos anteriores serão subtraídos e os novos serão somados.')) return;
+      const { error } = await supabase.rpc('recalculate_match', { p_match_id: matchId, p_new_score_a: parseInt(sA), p_new_score_b: parseInt(sB) });
+      if (error) alert(`Erro: ${error.message}`);
+      else { alert('Pontos recalculados com sucesso!'); loadMatches(); loadRanking(); }
+    } else {
+      if (!window.confirm('Encerrar o jogo e distribuir pontos?')) return;
+      const { error } = await supabase.rpc('finish_match', { p_match_id: matchId, p_real_score_a: parseInt(sA), p_real_score_b: parseInt(sB) });
+      if (error) alert(`Erro: ${error.message}`);
+      else { alert('Pontos distribuídos!'); loadMatches(); loadRanking(); }
+    }
   };
 
   const handleSyncApi = async () => {
     if (!window.confirm('Buscar os 104 jogos da Copa 2026?')) return;
-    setLoadingSync(true);
     setMatchMessage('Baixando...');
     try {
       const res = await fetch('/api/sync-matches');
       const data = await res.json();
-      if (data.error) { setMatchMessage(`Erro: ${data.error}`); setLoadingSync(false); return; }
+      if (data.error) { setMatchMessage(`Erro: ${data.error}`); return; }
 
       // Verificar se já existem jogos
       const { count } = await supabase.from('matches').select('id', { count: 'exact', head: true });
@@ -456,7 +454,6 @@ export default function AdminPanel() {
         );
         if (!ok) {
           setMatchMessage('Sincronização cancelada.');
-          setLoadingSync(false);
           return;
         }
         // Apagar palpites e jogos antigos
@@ -475,20 +472,18 @@ export default function AdminPanel() {
       if (error) setMatchMessage(`Erro: ${error.message}`);
       else { setMatchMessage(`🎉 ${data.matches.length} jogos sincronizados com sucesso!`); loadMatches(); loadTranslations(); }
     } catch (err: any) { setMatchMessage(`Erro: ${err.message}`); }
-    setLoadingSync(false);
   };
 
   // Atualiza apenas os nomes das fases sem apagar jogos/palpites
   const handleFixGroupNames = async () => {
-    setLoadingFixGroup(true);
     setMatchMessage('Corrigindo nomes das fases...');
     try {
       const res = await fetch('/api/sync-matches');
       const data = await res.json();
-      if (data.error) { setMatchMessage(`Erro: ${data.error}`); setLoadingFixGroup(false); return; }
+      if (data.error) { setMatchMessage(`Erro: ${data.error}`); return; }
       // Buscar todos os jogos existentes
       const { data: existing } = await supabase.from('matches').select('id, team_a, team_b, match_date');
-      if (!existing) { setMatchMessage('Nenhum jogo encontrado.'); setLoadingFixGroup(false); return; }
+      if (!existing) { setMatchMessage('Nenhum jogo encontrado.'); return; }
       let updated = 0;
       for (const apiMatch of data.matches) {
         // Encontrar o jogo correspondente por time e data similar
@@ -503,7 +498,6 @@ export default function AdminPanel() {
       setMatchMessage(`✅ ${updated} jogos tiveram o nome da fase corrigido!`);
       loadMatches();
     } catch (err: any) { setMatchMessage(`Erro: ${err.message}`); }
-    setLoadingFixGroup(false);
   };
 
   const handleClearAll = async () => {
@@ -515,11 +509,10 @@ export default function AdminPanel() {
       '• Os pontos de todos os jogadores serão zerados\n\n' +
       'Esta ação é irreversível!'
     )) return;
-    setLoadingClear(true);
     setMatchMessage('Resetando...');
     // 1. Apaga todos os palpites
     const { error: gErr } = await supabase.from('guesses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    if (gErr) { setMatchMessage(`Erro ao apagar palpites: ${gErr.message}`); setLoadingClear(false); return; }
+    if (gErr) { setMatchMessage(`Erro ao apagar palpites: ${gErr.message}`); return; }
     // 2. Zera pontos e placares exatos (apenas colunas que existem)
     await supabase.from('profiles').update({ points: 0, exact_scores: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
     // 3. Reseta resultados dos jogos (mantém os jogos, zera placar)
@@ -527,11 +520,9 @@ export default function AdminPanel() {
     setMatchMessage('✅ Palpites apagados, pontos zerados e resultados resetados!');
     loadMatches();
     loadRanking();
-    setLoadingClear(false);
   };
 
   const handleDownloadAudit = async () => {
-    setLoadingAudit(true);
     setMatchMessage('Gerando auditoria...');
     try {
       const { data, error } = await supabase.from('guesses').select(`
@@ -539,8 +530,8 @@ export default function AdminPanel() {
         profiles (name, email, user_group),
         matches (team_a, team_b, match_date, score_a, score_b)
       `);
-      if (error) { setMatchMessage(`Erro: ${error.message}`); setLoadingAudit(false); return; }
-      if (!data || data.length === 0) { setMatchMessage('Nenhum palpite ainda.'); setLoadingAudit(false); return; }
+      if (error) { setMatchMessage(`Erro: ${error.message}`); return; }
+      if (!data || data.length === 0) { setMatchMessage('Nenhum palpite ainda.'); return; }
 
       const getTipoPonto = (g: any) => {
         if (!g.points_earned || g.points_earned === 0) return 'Sem pontos';
@@ -570,7 +561,6 @@ export default function AdminPanel() {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setMatchMessage('Planilha gerada!');
     } catch (err: any) { setMatchMessage(`Erro: ${err.message}`); }
-    setLoadingAudit(false);
   };
 
   // ── Fases ─────────────────────────────────────────────────────────────────
@@ -591,10 +581,8 @@ export default function AdminPanel() {
   const handleTogglePhase = async (key: string) => {
     const current = openPhases[key] ?? false;
     const newVal = !current;
-    setLoadingPhases(prev => ({ ...prev, [key]: true }));
     setPhaseMessage('Salvando...');
     const { error } = await supabase.from('phase_settings').upsert({ phase_key: key, is_open: newVal }, { onConflict: 'phase_key' });
-    setLoadingPhases(prev => ({ ...prev, [key]: false }));
     if (error) {
       setPhaseMessage(`Erro: ${error.message}`);
     } else {
@@ -795,7 +783,7 @@ export default function AdminPanel() {
                     <option value="entregador">Entregador</option>
                     <option value="colaborador">Colaborador</option>
                   </select>
-                  <button type="submit" disabled={loadingEmail} style={{ padding: '0.8rem', backgroundColor: loadingEmail ? '#93c5fd' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: loadingEmail ? 'not-allowed' : 'pointer' }}>{loadingEmail ? 'Adicionando...' : 'Adicionar'}</button>
+                  <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Adicionar</button>
                 </form>
                 {emailMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{emailMessage}</div>}
               </div>
@@ -809,18 +797,26 @@ export default function AdminPanel() {
                 <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="submit" disabled={!csvFile || loadingCsv} style={{ flex: 1, padding: '0.8rem', backgroundColor: (!csvFile || loadingCsv) ? '#ccc' : '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: (!csvFile || loadingCsv) ? 'not-allowed' : 'pointer' }}>{loadingCsv ? 'Enviando...' : 'Adicionar em Massa'}</button>
-                    <button type="button" onClick={handleCsvRemove} disabled={!csvFile || loadingCsv} style={{ flex: 1, padding: '0.8rem', backgroundColor: (!csvFile || loadingCsv) ? '#ccc' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: (!csvFile || loadingCsv) ? 'not-allowed' : 'pointer' }}>{loadingCsv ? 'Removendo...' : 'Remover em Massa'}</button>
+                    <button type="submit" disabled={!csvFile} style={{ flex: 1, padding: '0.8rem', backgroundColor: csvFile ? '#16a34a' : '#ccc', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: csvFile ? 'pointer' : 'not-allowed' }}>Adicionar em Massa</button>
+                    <button type="button" onClick={handleCsvRemove} disabled={!csvFile} style={{ flex: 1, padding: '0.8rem', backgroundColor: csvFile ? '#ef4444' : '#ccc', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: csvFile ? 'pointer' : 'not-allowed' }}>Remover em Massa</button>
                   </div>
                 </form>
                 {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ color: '#666', margin: 0 }}>E-mails Autorizados ({allowedEmails.length})</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <h3 style={{ color: '#666', margin: 0 }}>E-mails Autorizados ({allowedEmails.length})</h3>
+                <input type="text" placeholder="Pesquisar e-mail..." value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <select value={emailFilter} onChange={e => setEmailFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <option value="todos">Todos</option>
+                  <option value="entregador">Entregadores</option>
+                  <option value="colaborador">Colaboradores</option>
+                </select>
+              </div>
               {selectedIds.length > 0 && (
-                <button onClick={handleBulkDelete} disabled={loadingBulkDelete} style={{ padding: '0.4rem 0.8rem', backgroundColor: loadingBulkDelete ? '#fca5a5' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: loadingBulkDelete ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  {loadingBulkDelete ? 'Removendo...' : `🗑️ Remover Selecionados (${selectedIds.length})`}
+                <button onClick={handleBulkDelete} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  🗑️ Remover Selecionados ({selectedIds.length})
                 </button>
               )}
             </div>
@@ -830,14 +826,23 @@ export default function AdminPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', padding: '0.8rem', borderBottom: '2px solid #eee', backgroundColor: '#f9fafb', position: 'sticky', top: 0, zIndex: 10 }}>
                   <input 
                     type="checkbox" 
-                    checked={selectedIds.length === allowedEmails.length && allowedEmails.length > 0} 
+                    checked={
+                      selectedIds.length > 0 && 
+                      selectedIds.length === allowedEmails
+                        .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
+                        .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()))
+                        .length
+                    } 
                     onChange={handleSelectAll} 
                     style={{ marginRight: '1rem', width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
                   />
-                  <span style={{ fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>Selecionar Todos</span>
+                  <span style={{ fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>Selecionar Todos visíveis</span>
                 </div>
               )}
-              {allowedEmails.map(item => (
+              {allowedEmails
+                .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
+                .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()))
+                .map(item => (
                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedIds.includes(item.id) ? '#eff6ff' : '#fff' }}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <input 
@@ -910,10 +915,10 @@ export default function AdminPanel() {
           <div>
             {/* Ações */}
             <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <button onClick={handleSyncApi} disabled={loadingSync} style={{ padding: '0.7rem 1.2rem', backgroundColor: loadingSync ? '#93c5fd' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: loadingSync ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>{loadingSync ? 'Sincronizando...' : '🔄 Sincronizar Copa 2026'}</button>
-              <button onClick={handleFixGroupNames} disabled={loadingFixGroup} style={{ padding: '0.7rem 1.2rem', backgroundColor: loadingFixGroup ? '#c084fc' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '8px', cursor: loadingFixGroup ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>{loadingFixGroup ? 'Corrigindo...' : '🏷️ Corrigir Nomes das Fases'}</button>
-              <button onClick={handleDownloadAudit} disabled={loadingAudit} style={{ padding: '0.7rem 1.2rem', backgroundColor: loadingAudit ? '#6ee7b7' : '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: loadingAudit ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>{loadingAudit ? 'Gerando...' : '📊 Baixar Auditoria'}</button>
-              <button onClick={handleClearAll} disabled={loadingClear} style={{ padding: '0.7rem 1.2rem', backgroundColor: loadingClear ? '#fca5a5' : '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: loadingClear ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>{loadingClear ? 'Limpando...' : '🗑 Limpar Palpites/Reset'}</button>
+              <button onClick={handleSyncApi} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Sincronizar Copa 2026</button>
+              <button onClick={handleFixGroupNames} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🏷️ Corrigir Nomes das Fases</button>
+              <button onClick={handleDownloadAudit} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📊 Baixar Auditoria</button>
+              <button onClick={handleClearAll} style={{ padding: '0.7rem 1.2rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🗑 Limpar Palpites/Reset</button>
             </div>
             {matchMessage && <div style={{ marginBottom: '1rem', padding: '0.8rem', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2C67EA', fontWeight: 'bold' }}>{matchMessage}</div>}
 
@@ -946,10 +951,15 @@ export default function AdminPanel() {
                         <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
                         <span>x</span>
                         <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], b: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        <button onClick={() => handleFinishMatch(match.id)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Encerrar</button>
+                        <button onClick={() => handleFinishMatch(match.id, false)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Encerrar</button>
                       </div>
                     ) : (
-                      <span style={{ fontWeight: 'bold', color: '#10b981' }}>{match.score_a} x {match.score_b}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <input type="number" min="0" placeholder={match.score_a} value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>x</span>
+                        <input type="number" min="0" placeholder={match.score_b} value={scores[match.id]?.b || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], b: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                        <button onClick={() => handleFinishMatch(match.id, true)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Recalcular</button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -985,19 +995,18 @@ export default function AdminPanel() {
                         {!isFixed && (
                           <button
                             onClick={() => handleTogglePhase(phase.key)}
-                            disabled={loadingPhases[phase.key] === true}
                             style={{
                               padding: '0.5rem 1.2rem',
-                              backgroundColor: loadingPhases[phase.key] ? '#ccc' : (isOpen ? '#ef4444' : '#10b981'),
+                              backgroundColor: isOpen ? '#ef4444' : '#10b981',
                               color: '#fff',
                               border: 'none',
                               borderRadius: '8px',
-                              cursor: loadingPhases[phase.key] ? 'not-allowed' : 'pointer',
+                              cursor: 'pointer',
                               fontWeight: 'bold',
                               fontSize: '0.85rem'
                             }}
                           >
-                            {loadingPhases[phase.key] ? 'Aguarde...' : (isOpen ? 'Fechar Fase' : 'Abrir Fase')}
+                            {isOpen ? 'Fechar Fase' : 'Abrir Fase'}
                           </button>
                         )}
                       </div>

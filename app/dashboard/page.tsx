@@ -74,7 +74,7 @@ export default function Dashboard() {
             .select('id', { count: 'exact', head: true })
             .eq('user_group', profileData.user_group)
             .eq('eligible', true)
-            .gt('points', profileData.points);
+            .or(`points.gt.${profileData.points},and(points.eq.${profileData.points},exact_scores.gt.${profileData.exact_scores})`);
             
           setRankPos((count || 0) + 1);
         } else {
@@ -87,6 +87,7 @@ export default function Dashboard() {
           .eq('user_group', profileData.user_group)
           .eq('eligible', true)
           .order('points', { ascending: false })
+          .order('exact_scores', { ascending: false })
           .limit(10);
         
         if (topData) setTopUsers(topData);
