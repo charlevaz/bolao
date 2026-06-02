@@ -235,6 +235,24 @@ export default function AdminPanel() {
     loadProfiles();
   };
 
+  const handleDownloadEmails = () => {
+    if (allowedEmails.length === 0) { alert('Nenhum dado para exportar.'); return; }
+    const headers = ['E-mail', 'CPF', 'Grupo', 'Elegível', 'Data de Inclusão'];
+    const rows = allowedEmails.map(r => [
+      `"${r.email}"`,
+      `"${r.cpf || ''}"`,
+      `"${r.user_group}"`,
+      r.eligible === false ? 'Nao' : 'Sim',
+      `"${new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}"`
+    ]);
+    const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `participantes_${Date.now()}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
   const executeCsvUpsert = async (data: any[]) => {
     if (data.length === 0) return;
     const { error } = await supabase.from('allowed_emails').upsert(data, { onConflict: 'email' });
@@ -907,6 +925,9 @@ export default function AdminPanel() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <h3 style={{ color: '#666', margin: 0 }}>E-mails Autorizados ({allowedEmails.length})</h3>
+                <button onClick={handleDownloadEmails} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  📊 Exportar Planilha
+                </button>
                 <input type="text" placeholder="Pesquisar e-mail ou CPF..." value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={emailFilter} onChange={e => setEmailFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
