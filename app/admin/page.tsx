@@ -111,10 +111,25 @@ export default function AdminPanel() {
     loadColabEmails();
   };
 
+  // ── Helper Pagination ───────────────────────────────────────────────────────
+  const fetchAllRows = async (tableName: string, orderBy: string, ascending: boolean = false) => {
+    let allData: any[] = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase.from(tableName).select('*').order(orderBy, { ascending }).range(from, from + step - 1);
+      if (error || !data || data.length === 0) break;
+      allData = [...allData, ...data];
+      if (data.length < step) break;
+      from += step;
+    }
+    return allData;
+  };
+
   // ── Emails ────────────────────────────────────────────────────────────────
   const loadEmails = async () => {
-    const { data } = await supabase.from('allowed_emails').select('*').order('created_at', { ascending: false });
-    if (data) setAllowedEmails(data);
+    const data = await fetchAllRows('allowed_emails', 'created_at', false);
+    setAllowedEmails(data);
   };
 
   const handleAddEmail = async (e: React.FormEvent) => {
@@ -402,8 +417,8 @@ export default function AdminPanel() {
 
   // ── Profiles ──────────────────────────────────────────────────────────────
   const loadProfiles = async () => {
-    const { data } = await supabase.from('profiles').select('*').order('points', { ascending: false });
-    if (data) setProfiles(data);
+    const data = await fetchAllRows('profiles', 'points', false);
+    setProfiles(data);
   };
 
   const handleToggleAdmin = async (id: string, currentRole: string) => {
@@ -432,8 +447,19 @@ export default function AdminPanel() {
 
   // ── Ranking ───────────────────────────────────────────────────────────────
   const loadRanking = async () => {
-    const { data: guessesData } = await supabase.from('guesses').select('points_earned, guess_score_a, guess_score_b, user_id').not('points_earned', 'is', null);
-    const { data: profilesData } = await supabase.from('profiles').select('id, name, email, user_group');
+    // Busca dados com paginação para evitar o limite de 1000 do supabase
+    let guessesData: any[] = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase.from('guesses').select('points_earned, guess_score_a, guess_score_b, user_id').not('points_earned', 'is', null).range(from, from + step - 1);
+      if (error || !data || data.length === 0) break;
+      guessesData = [...guessesData, ...data];
+      if (data.length < step) break;
+      from += step;
+    }
+
+    const profilesData = await fetchAllRows('profiles', 'id', true);
     if (!profilesData) return;
     const statsMap: any = {};
     profilesData.forEach((p: any) => {
@@ -685,12 +711,11 @@ export default function AdminPanel() {
   };
 
   const loadColabEmails = async () => {
-    const { data } = await supabase
-      .from('allowed_emails')
-      .select('*')
-      .eq('user_group', 'colaborador')
-      .order('created_at', { ascending: false });
-    if (data) setColabEmails(data);
+    const data = await fetchAllRows('allowed_emails', 'created_at', false);
+    if (data) {
+      const colabs = data.filter(e => e.user_group === 'colaborador');
+      setColabEmails(colabs);
+    }
   };
 
   const handleTogglePaid = async (id: string, currentPaid: boolean) => {
