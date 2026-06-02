@@ -875,6 +875,7 @@ export default function AdminPanel() {
                   user.name.toLowerCase().includes(profileSearch.toLowerCase()) || 
                   (user.cpf && user.cpf.includes(profileSearch))
                 )
+                .slice(0, 100)
                 .map(user => (
                 <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #f0f0f0', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
                   <div>
@@ -888,6 +889,11 @@ export default function AdminPanel() {
                   </button>
                 </div>
               ))}
+              {profiles.filter(user => profileFilter === 'todos' || user.user_group === profileFilter)
+                 .filter(user => profileSearch === '' || user.email.toLowerCase().includes(profileSearch.toLowerCase()) || user.name.toLowerCase().includes(profileSearch.toLowerCase()) || (user.cpf && user.cpf.includes(profileSearch)))
+                 .length > 100 && (
+                <p style={{ padding: '1rem', textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>Mostrando os 100 primeiros resultados. Refine a busca para encontrar mais usuários.</p>
+              )}
               {profiles.length === 0 && <p style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Nenhum usuário cadastrado ainda.</p>}
             </div>
           </div>
@@ -987,6 +993,7 @@ export default function AdminPanel() {
                   item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
                   (item.cpf && item.cpf.includes(emailSearch))
                 )
+                .slice(0, 100)
                 .map(item => (
                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedIds.includes(item.id) ? '#eff6ff' : '#fff' }}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -1013,6 +1020,11 @@ export default function AdminPanel() {
                   </div>
                 </div>
               ))}
+              {allowedEmails.filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
+                 .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()) || (item.cpf && item.cpf.includes(emailSearch)))
+                 .length > 100 && (
+                <p style={{ padding: '1rem', textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>Mostrando os 100 primeiros resultados. Refine a busca para encontrar mais e-mails.</p>
+              )}
             </div>
           </div>
         )}
