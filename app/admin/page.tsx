@@ -254,36 +254,22 @@ export default function AdminPanel() {
   };
 
   const executeCsvUpsert = async (data: any[]) => {
-    if (data.length === 0) return;
+    if (data.length === 0) return true;
     const { error } = await supabase.from('allowed_emails').upsert(data, { onConflict: 'email' });
     if (error) {
       setCsvMessage(`Erro: ${error.message}`);
+      return false;
     } else {
       for (const item of data) {
         const updateData: any = { user_group: item.user_group, eligible: item.eligible };
         if (item.cpf) updateData.cpf = item.cpf;
         await supabase.from('profiles').update(updateData).eq('email', item.email);
       }
-      setCsvMessage('Lista atualizada com sucesso!');
       setCsvFile(null);
-      setCsvConflicts([]);
       loadEmails();
       loadProfiles();
+      return true;
     }
-  };
-
-  const handleResolveConflicts = async (approveAll: boolean) => {
-    setCsvMessage('Processando atualizações...');
-    if (approveAll) {
-      for (const conflict of csvConflicts) {
-        const { data: existingRow } = await supabase.from('allowed_emails').select('id').eq('email', conflict.email_db).single();
-        if (existingRow) {
-           await supabase.from('allowed_emails').update({ email: conflict.email_csv, user_group: conflict.group, eligible: conflict.eligible }).eq('id', existingRow.id);
-           await supabase.from('profiles').update({ email: conflict.email_csv, user_group: conflict.group, eligible: conflict.eligible }).eq('email', conflict.email_db);
-        }
-      }
-    }
-    await executeCsvUpsert(csvToInsert);
   };
 
   const handleCsvUpload = async (e: React.FormEvent) => {
@@ -316,30 +302,41 @@ export default function AdminPanel() {
       const { data: existing } = await supabase.from('allowed_emails').select('email, cpf');
       const toUpdateOrInsert: any[] = [];
       const conflicts: any[] = [];
+      const seenCpfsInCsv = new Map<string, string>();
 
       parsed.forEach(item => {
         if (item.cpf) {
           const matchedByCpf = existing?.find(e => e.cpf === item.cpf);
           if (matchedByCpf && matchedByCpf.email !== item.email) {
-            conflicts.push({
-              email_csv: item.email,
-              email_db: matchedByCpf.email,
-              cpf: item.cpf,
-              group: item.user_group,
-              eligible: item.eligible
-            });
+            conflicts.push({ email_csv: item.email, reason: `CPF já associado a ${matchedByCpf.email}` });
             return;
           }
+          if (seenCpfsInCsv.has(item.cpf)) {
+            const firstEmail = seenCpfsInCsv.get(item.cpf);
+            if (firstEmail !== item.email) {
+              conflicts.push({ email_csv: item.email, reason: `CPF duplicado nesta mesma planilha (conflita com ${firstEmail})` });
+              return;
+            }
+          }
+          seenCpfsInCsv.set(item.cpf, item.email);
         }
         toUpdateOrInsert.push(item);
       });
 
-      if (conflicts.length > 0) {
-        setCsvConflicts(conflicts);
-        setCsvToInsert(toUpdateOrInsert);
-        setCsvMessage(`⚠️ Atenção: ${conflicts.length} CPF(s) já vinculados a outros e-mails.`);
+      setCsvConflicts(conflicts);
+      
+      if (toUpdateOrInsert.length > 0) {
+        setCsvMessage('Atualizando banco de dados...');
+        const success = await executeCsvUpsert(toUpdateOrInsert);
+        if (success) {
+          setCsvMessage(conflicts.length > 0 ? `Foram processados ${toUpdateOrInsert.length} e-mails. Algumas linhas foram ignoradas.` : 'Lista importada com sucesso!');
+        }
       } else {
-        await executeCsvUpsert(toUpdateOrInsert);
+        if (conflicts.length > 0) {
+          setCsvMessage('Nenhum registro válido. Todos apresentaram conflitos de duplicidade.');
+        } else {
+          setCsvMessage('Nenhum dado válido encontrado na planilha.');
+        }
       }
     };
     reader.readAsText(csvFile);
@@ -906,18 +903,14 @@ export default function AdminPanel() {
                 {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
                 {csvConflicts.length > 0 && (
                   <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '8px' }}>
-                    <h4 style={{ color: '#b45309', margin: '0 0 0.5rem 0' }}>Conflitos de CPF Encontrados</h4>
-                    <p style={{ fontSize: '0.8rem', color: '#92400e', margin: '0 0 1rem 0' }}>Estes CPFs já pertencem a outros e-mails. Deseja atualizar o e-mail de acesso deles?</p>
-                    <ul style={{ fontSize: '0.8rem', color: '#333', paddingLeft: '1.5rem', marginBottom: '1rem' }}>
-                      {csvConflicts.slice(0, 3).map((c, i) => (
-                        <li key={i}>CPF <b>{c.cpf}</b>: Atualizar de <i>{c.email_db}</i> para <i>{c.email_csv}</i></li>
+                    <h4 style={{ color: '#b45309', margin: '0 0 0.5rem 0' }}>Itens Ignorados (Duplicidade)</h4>
+                    <p style={{ fontSize: '0.8rem', color: '#92400e', margin: '0 0 1rem 0' }}>Os seguintes itens não foram importados pois o CPF já pertence a outra conta.</p>
+                    <ul style={{ fontSize: '0.8rem', color: '#333', paddingLeft: '1.5rem', marginBottom: '0' }}>
+                      {csvConflicts.slice(0, 10).map((c, i) => (
+                        <li key={i}><b>{c.email_csv}</b>: {c.reason}</li>
                       ))}
-                      {csvConflicts.length > 3 && <li>...e mais {csvConflicts.length - 3}</li>}
+                      {csvConflicts.length > 10 && <li>...e mais {csvConflicts.length - 10} itens</li>}
                     </ul>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => handleResolveConflicts(true)} style={{ padding: '0.6rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', flex: 1 }}>Sim, Atualizar</button>
-                      <button onClick={() => handleResolveConflicts(false)} style={{ padding: '0.6rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', flex: 1 }}>Não, Ignorar</button>
-                    </div>
                   </div>
                 )}
               </div>
