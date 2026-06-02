@@ -34,17 +34,22 @@ export default function AdminPanel() {
 
   // Emails
   const [emailToAdd, setEmailToAdd] = useState('');
+  const [cpfToAdd, setCpfToAdd] = useState('');
   const [emailGroup, setEmailGroup] = useState('entregador');
   const [emailMessage, setEmailMessage] = useState('');
   const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvMessage, setCsvMessage] = useState('');
+  const [csvConflicts, setCsvConflicts] = useState<any[]>([]);
+  const [csvToInsert, setCsvToInsert] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [emailSearch, setEmailSearch] = useState('');
   const [emailFilter, setEmailFilter] = useState('todos');
 
   // Users (profiles)
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [profileSearch, setProfileSearch] = useState('');
+  const [profileFilter, setProfileFilter] = useState('todos');
 
   // Dictionary
   const [translations, setTranslations] = useState<any[]>([]);
@@ -115,9 +120,20 @@ export default function AdminPanel() {
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailMessage('Adicionando...');
-    const { error } = await supabase.from('allowed_emails').insert([{ email: emailToAdd, user_group: emailGroup }]);
-    if (error) setEmailMessage(`Erro: ${error.message}`);
-    else { setEmailMessage('E-mail autorizado!'); setEmailToAdd(''); loadEmails(); }
+    const cleanCpf = cpfToAdd.replace(/\D/g, '') || null;
+    const { error } = await supabase.from('allowed_emails').insert([{ email: emailToAdd, cpf: cleanCpf, user_group: emailGroup }]);
+    if (error) {
+      if (error.message.includes('unique constraint')) {
+        setEmailMessage('Erro: Este E-mail ou CPF já está cadastrado.');
+      } else {
+        setEmailMessage(`Erro: ${error.message}`);
+      }
+    } else { 
+      setEmailMessage('E-mail autorizado!'); 
+      setEmailToAdd(''); 
+      setCpfToAdd(''); 
+      loadEmails(); 
+    }
   };
 
   const handleDeleteEmail = async (id: string, email: string) => {
@@ -192,7 +208,10 @@ export default function AdminPanel() {
     if (e.target.checked) {
       const filtered = allowedEmails
         .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-        .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()));
+        .filter(item => emailSearch === '' || 
+          item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
+          (item.cpf && item.cpf.includes(emailSearch))
+        );
       setSelectedIds(filtered.map(a => a.id));
     } else {
       setSelectedIds([]);
@@ -216,6 +235,39 @@ export default function AdminPanel() {
     loadProfiles();
   };
 
+  const executeCsvUpsert = async (data: any[]) => {
+    if (data.length === 0) return;
+    const { error } = await supabase.from('allowed_emails').upsert(data, { onConflict: 'email' });
+    if (error) {
+      setCsvMessage(`Erro: ${error.message}`);
+    } else {
+      for (const item of data) {
+        const updateData: any = { user_group: item.user_group, eligible: item.eligible };
+        if (item.cpf) updateData.cpf = item.cpf;
+        await supabase.from('profiles').update(updateData).eq('email', item.email);
+      }
+      setCsvMessage('Lista atualizada com sucesso!');
+      setCsvFile(null);
+      setCsvConflicts([]);
+      loadEmails();
+      loadProfiles();
+    }
+  };
+
+  const handleResolveConflicts = async (approveAll: boolean) => {
+    setCsvMessage('Processando atualizações...');
+    if (approveAll) {
+      for (const conflict of csvConflicts) {
+        const { data: existingRow } = await supabase.from('allowed_emails').select('id').eq('email', conflict.email_db).single();
+        if (existingRow) {
+           await supabase.from('allowed_emails').update({ email: conflict.email_csv, user_group: conflict.group, eligible: conflict.eligible }).eq('id', existingRow.id);
+           await supabase.from('profiles').update({ email: conflict.email_csv, user_group: conflict.group, eligible: conflict.eligible }).eq('email', conflict.email_db);
+        }
+      }
+    }
+    await executeCsvUpsert(csvToInsert);
+  };
+
   const handleCsvUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!csvFile) return;
@@ -224,36 +276,52 @@ export default function AdminPanel() {
     reader.onload = async (event) => {
       const text = event.target?.result as string;
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-      const toInsert = lines.map(line => {
+      
+      const parsed = lines.map(line => {
         const parts = line.split(',');
         const email = parts[0]?.trim();
-        let ug = parts[1]?.trim().toLowerCase();
+        const cpf = parts[1]?.trim().replace(/\D/g, '') || null;
+        let ug = parts[2]?.trim().toLowerCase();
         if (ug !== 'entregador' && ug !== 'colaborador') ug = 'colaborador';
         
         let eligible = true;
-        if (parts.length > 2) {
-          const elStr = parts[2]?.trim().toLowerCase();
+        if (parts.length > 3) {
+          const elStr = parts[3]?.trim().toLowerCase();
           if (elStr === 'inelegivel' || elStr === 'inelegível' || elStr === 'false' || elStr === 'nao' || elStr === 'não') {
             eligible = false;
           }
         }
         
-        return { email, user_group: ug, eligible };
+        return { email, cpf, user_group: ug, eligible };
       }).filter(i => i.email && i.email.includes('@'));
       
-      const { error } = await supabase.from('allowed_emails').upsert(toInsert, { onConflict: 'email' });
-      
-      if (error) {
-        setCsvMessage(`Erro: ${error.message}`);
-      } else {
-        // Atualiza instantaneamente os perfis (se já estiverem logados/criados)
-        for (const item of toInsert) {
-          await supabase.from('profiles').update({ eligible: item.eligible }).eq('email', item.email);
+      const { data: existing } = await supabase.from('allowed_emails').select('email, cpf');
+      const toUpdateOrInsert: any[] = [];
+      const conflicts: any[] = [];
+
+      parsed.forEach(item => {
+        if (item.cpf) {
+          const matchedByCpf = existing?.find(e => e.cpf === item.cpf);
+          if (matchedByCpf && matchedByCpf.email !== item.email) {
+            conflicts.push({
+              email_csv: item.email,
+              email_db: matchedByCpf.email,
+              cpf: item.cpf,
+              group: item.user_group,
+              eligible: item.eligible
+            });
+            return;
+          }
         }
-        setCsvMessage(`🎉 ${toInsert.length} e-mails carregados/atualizados!`);
-        setCsvFile(null); 
-        loadEmails();
-        loadProfiles();
+        toUpdateOrInsert.push(item);
+      });
+
+      if (conflicts.length > 0) {
+        setCsvConflicts(conflicts);
+        setCsvToInsert(toUpdateOrInsert);
+        setCsvMessage(`⚠️ Atenção: ${conflicts.length} CPF(s) já vinculados a outros e-mails.`);
+      } else {
+        await executeCsvUpsert(toUpdateOrInsert);
       }
     };
     reader.readAsText(csvFile);
@@ -747,18 +815,33 @@ export default function AdminPanel() {
         {/* ── TAB: USUÁRIOS ──────────────────────────────────────────── */}
         {activeTab === 'usuarios' && (
           <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, color: '#0F1849' }}>👑 Gestão de Usuários</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, color: '#0F1849' }}>👑 Gestão de Usuários</h2>
+                <input type="text" placeholder="Pesquisar nome, e-mail ou CPF..." value={profileSearch} onChange={e => setProfileSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <select value={profileFilter} onChange={e => setProfileFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <option value="todos">Todos</option>
+                  <option value="entregador">Entregadores</option>
+                  <option value="colaborador">Colaboradores</option>
+                </select>
+              </div>
               <button onClick={loadProfiles} style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Atualizar</button>
             </div>
             <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
-              {profiles.map(user => (
+              {profiles
+                .filter(user => profileFilter === 'todos' || user.user_group === profileFilter)
+                .filter(user => profileSearch === '' || 
+                  user.email.toLowerCase().includes(profileSearch.toLowerCase()) || 
+                  user.name.toLowerCase().includes(profileSearch.toLowerCase()) || 
+                  (user.cpf && user.cpf.includes(profileSearch))
+                )
+                .map(user => (
                 <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #f0f0f0', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
                   <div>
                     <span style={{ fontWeight: 'bold', color: '#0F1849' }}>{user.name}</span>
                     {user.role === 'admin' && <span style={{ fontSize: '0.7rem', backgroundColor: '#eab308', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Admin</span>}
                     <br />
-                    <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · {user.user_group} · {user.points} pts</span>
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · CPF: {user.cpf || 'Não inf.'} · {user.user_group} · {user.points} pts</span>
                   </div>
                   <button onClick={() => handleToggleAdmin(user.id, user.role)} style={{ padding: '0.4rem 0.8rem', backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                     {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
@@ -779,6 +862,7 @@ export default function AdminPanel() {
                 <h3 style={{ color: '#666', marginBottom: '1rem' }}>Adicionar E-mail</h3>
                 <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="email" placeholder="E-mail" value={emailToAdd} onChange={e => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  <input type="text" placeholder="CPF (Apenas números)" value={cpfToAdd} onChange={e => setCpfToAdd(e.target.value)} maxLength={14} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
                   <select value={emailGroup} onChange={e => setEmailGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}>
                     <option value="entregador">Entregador</option>
                     <option value="colaborador">Colaborador</option>
@@ -791,8 +875,8 @@ export default function AdminPanel() {
                 <h3 style={{ color: '#666', marginBottom: '0.5rem' }}>Importar CSV</h3>
                 <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
                   Formato esperado (sem cabeçalho):<br/>
-                  <b>email,grupo,elegibilidade</b><br/>
-                  Ex: <i>joao@email.com,entregador,sim</i>
+                  <b>email,cpf,grupo,elegibilidade</b><br/>
+                  Ex: <i>joao@email.com,12345678900,entregador,sim</i>
                 </p>
                 <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
@@ -802,12 +886,28 @@ export default function AdminPanel() {
                   </div>
                 </form>
                 {csvMessage && <div style={{ marginTop: '0.5rem', color: '#2C67EA', fontSize: '0.9rem', fontWeight: 'bold' }}>{csvMessage}</div>}
+                {csvConflicts.length > 0 && (
+                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '8px' }}>
+                    <h4 style={{ color: '#b45309', margin: '0 0 0.5rem 0' }}>Conflitos de CPF Encontrados</h4>
+                    <p style={{ fontSize: '0.8rem', color: '#92400e', margin: '0 0 1rem 0' }}>Estes CPFs já pertencem a outros e-mails. Deseja atualizar o e-mail de acesso deles?</p>
+                    <ul style={{ fontSize: '0.8rem', color: '#333', paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+                      {csvConflicts.slice(0, 3).map((c, i) => (
+                        <li key={i}>CPF <b>{c.cpf}</b>: Atualizar de <i>{c.email_db}</i> para <i>{c.email_csv}</i></li>
+                      ))}
+                      {csvConflicts.length > 3 && <li>...e mais {csvConflicts.length - 3}</li>}
+                    </ul>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={() => handleResolveConflicts(true)} style={{ padding: '0.6rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', flex: 1 }}>Sim, Atualizar</button>
+                      <button onClick={() => handleResolveConflicts(false)} style={{ padding: '0.6rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', flex: 1 }}>Não, Ignorar</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <h3 style={{ color: '#666', margin: 0 }}>E-mails Autorizados ({allowedEmails.length})</h3>
-                <input type="text" placeholder="Pesquisar e-mail..." value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="text" placeholder="Pesquisar e-mail ou CPF..." value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={emailFilter} onChange={e => setEmailFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
                   <option value="entregador">Entregadores</option>
@@ -830,7 +930,10 @@ export default function AdminPanel() {
                       selectedIds.length > 0 && 
                       selectedIds.length === allowedEmails
                         .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-                        .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()))
+                        .filter(item => emailSearch === '' || 
+                          item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
+                          (item.cpf && item.cpf.includes(emailSearch))
+                        )
                         .length
                     } 
                     onChange={handleSelectAll} 
@@ -841,7 +944,10 @@ export default function AdminPanel() {
               )}
               {allowedEmails
                 .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-                .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()))
+                .filter(item => emailSearch === '' || 
+                  item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
+                  (item.cpf && item.cpf.includes(emailSearch))
+                )
                 .map(item => (
                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedIds.includes(item.id) ? '#eff6ff' : '#fff' }}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -853,7 +959,10 @@ export default function AdminPanel() {
                     />
                     <div>
                       <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#0F1849' }}>{item.email}</span>
-                      <br /><span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>{item.user_group}</span>
+                      <br />
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>
+                        {item.user_group} {item.cpf ? `· CPF: ${item.cpf}` : ''}
+                      </span>
                       {item.eligible === false && <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>Inelegível</span>}
                     </div>
                   </div>
