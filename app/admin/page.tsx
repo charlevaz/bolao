@@ -314,7 +314,7 @@ export default function AdminPanel() {
         return { email, cpf, user_group: ug, eligible };
       }).filter(i => i.email && i.email.includes('@'));
       
-      const { data: existing } = await supabase.from('allowed_emails').select('email, cpf');
+      const existing = await fetchAllRows('allowed_emails', 'created_at', false);
       const toUpdateOrInsert: any[] = [];
       const conflicts: any[] = [];
       const seenCpfsInCsv = new Map<string, string>();
