@@ -26,7 +26,9 @@ export const getTheme = () => {
         prizes: [
           { position: '1º', description: 'R$ 100', color: '#4ade80' },
           { position: '2º', description: '2 Cortes de Cabelo', color: '#4ade80' },
-          { position: '3º ao 5º', description: '1 Corte de Cabelo', color: '#60a5fa' }
+          { position: '3º', description: '1 Corte de Cabelo', color: '#60a5fa' },
+          { position: '4º', description: '1 Corte de Cabelo', color: '#60a5fa' },
+          { position: '5º', description: '1 Corte de Cabelo', color: '#60a5fa' }
         ],
         generalRules: [
           'É obrigatório ser cliente ou parceiro da barbearia para participar e concorrer aos prêmios;',
