@@ -227,7 +227,7 @@ export default function AdminPanel() {
         .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
         .filter(item => emailSearch === '' || 
           item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
-          (item.cpf && item.cpf.includes(emailSearch))
+          (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, '')))
         );
       setSelectedIds(filtered.map(a => a.id));
     } else {
@@ -896,7 +896,7 @@ export default function AdminPanel() {
                 .filter(user => profileSearch === '' || 
                   user.email.toLowerCase().includes(profileSearch.toLowerCase()) || 
                   user.name.toLowerCase().includes(profileSearch.toLowerCase()) || 
-                  (user.cpf && user.cpf.includes(profileSearch))
+                  (user.cpf && String(user.cpf).includes(profileSearch.replace(/\D/g, '')))
                 )
                 .slice(0, 100)
                 .map(user => (
@@ -917,7 +917,7 @@ export default function AdminPanel() {
                 </div>
               ))}
               {profiles.filter(user => profileFilter === 'todos' || user.user_group === profileFilter)
-                 .filter(user => profileSearch === '' || user.email.toLowerCase().includes(profileSearch.toLowerCase()) || user.name.toLowerCase().includes(profileSearch.toLowerCase()) || (user.cpf && user.cpf.includes(profileSearch)))
+                 .filter(user => profileSearch === '' || user.email.toLowerCase().includes(profileSearch.toLowerCase()) || user.name.toLowerCase().includes(profileSearch.toLowerCase()) || (user.cpf && String(user.cpf).includes(profileSearch.replace(/\D/g, ''))))
                  .length > 100 && (
                 <p style={{ padding: '1rem', textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>Mostrando os 100 primeiros resultados. Refine a busca para encontrar mais usuários.</p>
               )}
@@ -1009,7 +1009,7 @@ export default function AdminPanel() {
                         .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
                         .filter(item => emailSearch === '' || 
                           item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
-                          (item.cpf && item.cpf.includes(emailSearch))
+                          (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, '')))
                         )
                         .length
                     } 
@@ -1023,7 +1023,7 @@ export default function AdminPanel() {
                 .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
                 .filter(item => emailSearch === '' || 
                   item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
-                  (item.cpf && item.cpf.includes(emailSearch))
+                  (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, '')))
                 )
                 .slice(0, 100)
                 .map(item => (
