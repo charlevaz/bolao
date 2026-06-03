@@ -37,7 +37,8 @@ export const getTheme = () => {
           'Não será permitido alterar palpites após o fechamento;',
           'Válido durante a Copa do Mundo.'
         ],
-        footer: 'Ao final da Copa, os 5 clientes com maior pontuação no ranking geral serão premiados.'
+        footer: 'Ao final da Copa, os 5 clientes com maior pontuação no ranking geral serão premiados.',
+        whatsapp: '5511971911519'
       }
     };
   }
@@ -82,7 +83,8 @@ export const getTheme = () => {
         'Não será permitido alterar palpites após o fechamento;',
         'Válido durante a copa (11 de Junho a 19 de Julho).'
       ],
-      footer: 'Ao final da Copa, os 50 entregadores com maior pontuação no ranking geral serão premiados.'
+      footer: 'Ao final da Copa, os 50 entregadores com maior pontuação no ranking geral serão premiados.',
+      whatsapp: '5511917050962'
     }
   };
 };

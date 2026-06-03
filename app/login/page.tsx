@@ -12,6 +12,7 @@ export default function Login() {
   const supabase = createClient();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Interceptar e traduzir erros do Supabase Auth no cliente
   const originalSignUp = supabase.auth.signUp.bind(supabase.auth);
@@ -102,42 +103,67 @@ export default function Login() {
           Seu e-mail deve estar autorizado pela gestão para você conseguir criar sua conta.
         </p>
 
-        <Auth
-          supabaseClient={supabase}
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: theme.primaryColor,
-                  brandAccent: theme.secondaryColor,
-                  messageText: '#ff4444',
+        <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', fontSize: '0.85rem', cursor: 'pointer', color: '#475569' }}>
+            <input 
+              type="checkbox" 
+              checked={acceptedTerms} 
+              onChange={e => setAcceptedTerms(e.target.checked)} 
+              style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer' }} 
+            />
+            <span style={{ lineHeight: '1.4' }}>
+              Declaro que li e concordo com os <Link href="/privacidade" style={{ color: theme.primaryColor, textDecoration: 'underline', fontWeight: 'bold' }}>Termos de Uso e Política de Privacidade</Link> (LGPD).
+            </span>
+          </label>
+        </div>
+
+        <div style={{ 
+          opacity: acceptedTerms ? 1 : 0.4, 
+          pointerEvents: acceptedTerms ? 'auto' : 'none',
+          transition: 'all 0.3s ease'
+        }}>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: theme.primaryColor,
+                    brandAccent: theme.secondaryColor,
+                    messageText: '#ff4444',
+                  }
                 }
               }
-            }
-          }}
-          localization={{
-            variables: {
-              sign_in: {
-                email_label: 'E-mail',
-                password_label: 'Senha',
-                button_label: 'Entrar',
-                loading_button_label: 'Entrando...',
-                email_input_placeholder: 'Seu e-mail',
-                password_input_placeholder: 'Sua senha',
-                link_text: 'Já tem uma conta? Faça Login'
-              },
-              sign_up: {
-                email_label: 'E-mail Corporativo',
-                password_label: 'Crie uma Senha Forte',
-                button_label: 'Cadastrar',
-                loading_button_label: 'Cadastrando...',
-                email_input_placeholder: 'Seu e-mail',
-                password_input_placeholder: 'Sua senha',
-                link_text: 'Não tem uma senha? Crie sua conta'
-              },
-              forgotten_password: {
-                link_text: 'Esqueceu sua senha?',
+            }}
+            localization={{
+              variables: {
+                sign_in: {
+                  email_label: 'E-mail',
+                  password_label: 'Senha',
+                  button_label: 'Entrar',
+                  loading_button_label: 'Entrando...',
+                  email_input_placeholder: 'Seu e-mail',
+                  password_input_placeholder: 'Sua senha',
+                  link_text: 'Já tem uma conta? Faça Login'
+                },
+                sign_up: {
+                  email_label: 'E-mail Corporativo',
+                  password_label: 'Crie uma Senha Forte',
+                  button_label: 'Cadastrar',
+                  loading_button_label: 'Cadastrando...',
+                  email_input_placeholder: 'Seu e-mail',
+                  password_input_placeholder: 'Sua senha',
+                  link_text: 'Não tem uma senha? Crie sua conta'
+                },
+                forgotten_password: {
+                  link_text: 'Esqueceu sua senha?',
+                  button_label: 'Enviar instruções'
+                }
+              }
+            }}
+          />
+        </div>
                 button_label: 'Recuperar Senha',
                 password_label: 'Sua Senha',
                 email_label: 'E-mail'

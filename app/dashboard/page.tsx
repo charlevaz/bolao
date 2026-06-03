@@ -72,7 +72,7 @@ export default function Dashboard() {
       if (profileData) {
         if (profileData.eligible !== false) {
           let countQuery = supabase
-            .from('profiles')
+            .from('public_profiles')
             .select('id', { count: 'exact', head: true })
             .eq('eligible', true)
             .or(`points.gt.${profileData.points},and(points.eq.${profileData.points},exact_scores.gt.${profileData.exact_scores})`);
@@ -89,7 +89,7 @@ export default function Dashboard() {
         }
 
         let topQuery = supabase
-          .from('profiles')
+          .from('public_profiles')
           .select('*')
           .eq('eligible', true)
           .order('points', { ascending: false })
