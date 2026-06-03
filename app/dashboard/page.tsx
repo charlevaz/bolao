@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { getTheme } from '@/utils/theme';
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -34,6 +35,7 @@ export default function Dashboard() {
   const [phaseSettings, setPhaseSettings] = useState<Record<string, boolean>>({});
 
   const supabase = createClient();
+  const theme = getTheme();
 
   useEffect(() => {
     async function loadDashboard() {
@@ -345,7 +347,21 @@ export default function Dashboard() {
                 required 
                 style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem' }}
               />
-              <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ backgroundColor: theme.primaryColor, color: '#fff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Seus Pontos</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0.5rem 0' }}>{profile?.points || 0}</div>
+            </div>
+            
+            <div style={{ backgroundColor: theme.secondaryColor, color: theme.id === 'barbearia' ? '#000' : '#fff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9, fontWeight: 'bold' }}>Sua Posição</div>
+              <div style={{ fontSize: '2rem', fontWeight: '900', margin: '0.5rem 0' }}>
+                {rankPos ? `${rankPos}º` : '-'}
+              </div>
+              <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 'bold' }}>entre {profile?.user_group === 'entregador' ? theme.labels.entregadores : theme.labels.colaboradores}</div>
+            </div>
+          </div>
+              <button type="submit" style={{ padding: '0.8rem', backgroundColor: theme.primaryColor, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
                 Salvar Nome
               </button>
             </form>
@@ -356,9 +372,9 @@ export default function Dashboard() {
 
 
       {/* HEADER TOP */}
-      <header style={{ backgroundColor: '#0F1849', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', flexWrap: 'wrap', gap: '1rem' }}>
+      <header style={{ backgroundColor: theme.primaryColor, padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#2C67EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: theme.secondaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>
             {profile?.name?.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -397,8 +413,8 @@ export default function Dashboard() {
                   style={{ 
                     flexShrink: 0,
                     padding: '0.8rem 1.2rem', 
-                    backgroundColor: selectedDay === d.date ? '#2C67EA' : '#fff', 
-                    border: selectedDay === d.date ? '2px solid #2C67EA' : '1px solid #ddd',
+                    backgroundColor: selectedDay === d.date ? theme.primaryColor : '#fff', 
+                    border: selectedDay === d.date ? `2px solid ${theme.primaryColor}` : '1px solid #ddd',
                     borderRadius: '12px',
                     color: selectedDay === d.date ? '#fff' : '#666',
                     cursor: 'pointer',
@@ -406,7 +422,7 @@ export default function Dashboard() {
                     flexDirection: 'column',
                     alignItems: 'center',
                     minWidth: '80px',
-                    boxShadow: selectedDay === d.date ? '0 4px 10px rgba(44, 103, 234, 0.3)' : 'none'
+                    boxShadow: selectedDay === d.date ? `0 4px 10px rgba(44, 103, 234, 0.3)` : 'none'
                   }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{d.short}</span>
                   <span style={{ fontSize: '1rem', fontWeight: '900' }}>{d.label}</span>
@@ -419,9 +435,9 @@ export default function Dashboard() {
               <span style={{ fontSize: '0.9rem', color: '#666', fontWeight: 'bold' }}>{guesses.length} de {matches.length} palpites feitos</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '50%' }}>
                 <div style={{ flex: 1, height: '10px', backgroundColor: '#e2e8f0', borderRadius: '5px', overflow: 'hidden' }}>
-                  <div style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: '#2C67EA' }}></div>
+                  <div style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: theme.primaryColor }}></div>
                 </div>
-                <span style={{ fontSize: '0.9rem', color: '#2C67EA', fontWeight: 'bold' }}>{progressPercent}%</span>
+                <span style={{ fontSize: '0.9rem', color: theme.primaryColor, fontWeight: 'bold' }}>{progressPercent}%</span>
               </div>
             </div>
 
@@ -460,7 +476,7 @@ export default function Dashboard() {
                             ⚠️ Sem palpite
                           </span>
                         )}
-                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.3rem 0.8rem', borderRadius: '20px', border: locked ? '1px solid #ef4444' : '1px solid #2C67EA', color: locked ? '#ef4444' : '#2C67EA', backgroundColor: locked ? '#fef2f2' : '#eff6ff' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.3rem 0.8rem', borderRadius: '20px', border: locked ? '1px solid #ef4444' : `1px solid ${theme.primaryColor}`, color: locked ? '#ef4444' : theme.primaryColor, backgroundColor: locked ? '#fef2f2' : '#eff6ff' }}>
                           {locked ? '🔒 Encerrado' : `🕒 ${calculateDaysLeft(match.match_date)}`}
                         </span>
                       </div>
@@ -468,7 +484,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* INFO DO JOGO */}
-                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#0F1849', fontSize: '0.85rem' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', color: theme.primaryColor, fontSize: '0.85rem' }}>
                       <span style={{ fontWeight: '900' }}>{translatePhaseName(match.group_name)}</span> • {formatTimeBrasilia(match.match_date)} • {match.venue || 'Estádio A Definir'}
                     </div>
 
@@ -522,7 +538,7 @@ export default function Dashboard() {
                       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem', flexDirection: 'column', alignItems: 'center' }}>
                         <button 
                           onClick={() => handleSaveGuess(match.id)}
-                          style={{ padding: '0.8rem 2rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', width: '100%', maxWidth: '300px', boxShadow: '0 4px 10px rgba(44, 103, 234, 0.3)' }}
+                          style={{ padding: '0.8rem 2rem', backgroundColor: theme.primaryColor, color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', width: '100%', maxWidth: '300px', boxShadow: `0 4px 10px rgba(44, 103, 234, 0.3)` }}
                         >
                           {myGuess ? 'Atualizar Palpite' : 'Confirmar Palpite'}
                         </button>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
+import { getTheme } from '@/utils/theme';
 
 export default async function Home() {
   const supabase = createClient();
@@ -10,8 +11,10 @@ export default async function Home() {
     redirect('/dashboard');
   }
 
+  const theme = getTheme();
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem', backgroundColor: theme.primaryColor, color: '#FFFFFF' }}>
       
       {/* Logotipos */}
       <div style={{ 
@@ -21,23 +24,23 @@ export default async function Home() {
         flexWrap: 'wrap', 
         justifyContent: 'center'
       }}>
-        <img src="/logo-sumarezinho.png" alt="EntreGô Sumarezinho" style={{ height: '80px', width: '80px', borderRadius: '12px', objectFit: 'cover' }} />
-        <img src="/logo-aldeota.png" alt="EntreGô Aldeota" style={{ height: '80px', width: '80px', borderRadius: '12px', objectFit: 'cover' }} />
-        <img src="/logo-recreio.png" alt="EntreGô Recreio" style={{ height: '80px', width: '80px', borderRadius: '12px', objectFit: 'cover' }} />
+        {theme.logos.map((logo, idx) => (
+          <img key={idx} src={logo} alt={theme.appName} style={{ height: '80px', width: '80px', borderRadius: '12px', objectFit: 'cover' }} />
+        ))}
       </div>
 
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', textAlign: 'center' }}>
-        Bolão <span style={{ color: '#2C67EA' }}>EntreGô Sumarezinho, Aldeota e Recreio</span>
+        {theme.homeTitle}
       </h1>
       
       <p style={{ fontSize: '1.2rem', marginBottom: '3rem', textAlign: 'center', maxWidth: '600px', opacity: 0.9 }}>
-        Participe do nosso bolão exclusivo da Copa do Mundo 2026. Acerte os placares, acumule pontos e ganhe prêmios incríveis!
+        {theme.homeSubtitle}
       </p>
 
       <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column', width: '100%', maxWidth: '300px' }}>
         <Link href="/login" style={{ 
-          backgroundColor: '#2C67EA', 
-          color: '#FFFFFF', 
+          backgroundColor: theme.secondaryColor, 
+          color: theme.id === 'barbearia' ? '#000' : '#FFFFFF', 
           border: 'none', 
           padding: '1rem', 
           borderRadius: '8px', 
@@ -53,7 +56,7 @@ export default async function Home() {
         <Link href="/regras" style={{ 
           backgroundColor: 'transparent', 
           color: '#FFFFFF', 
-          border: '2px solid #2C67EA', 
+          border: `2px solid ${theme.secondaryColor}`, 
           padding: '1rem', 
           borderRadius: '8px', 
           fontSize: '1.1rem', 

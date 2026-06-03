@@ -6,6 +6,7 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getTheme } from '@/utils/theme';
 
 export default function Login() {
   const supabase = createClient();
@@ -85,6 +86,8 @@ export default function Login() {
 
   if (checking) return <div style={{ padding: '4rem', textAlign: 'center' }}>Carregando...</div>;
 
+  const theme = getTheme();
+
   return (
     <div style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       
@@ -106,8 +109,8 @@ export default function Login() {
             variables: {
               default: {
                 colors: {
-                  brand: '#2C67EA',
-                  brandAccent: '#1a4bb3',
+                  brand: theme.primaryColor,
+                  brandAccent: theme.secondaryColor,
                   messageText: '#ff4444',
                 }
               }

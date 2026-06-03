@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { getTheme } from '@/utils/theme';
 
 const TABS = ['ranking', 'usuarios', 'emails', 'dicionario', 'jogos', 'fases'] as const;
 type Tab = typeof TABS[number];
@@ -86,6 +87,7 @@ export default function AdminPanel() {
   const [colabEmails, setColabEmails] = useState<any[]>([]);
 
   const supabase = createClient();
+  const theme = getTheme();
 
   useEffect(() => {
     async function loadAdminData() {
@@ -873,8 +875,8 @@ export default function AdminPanel() {
                 <input type="text" placeholder="Pesquisar nome, e-mail ou CPF..." value={profileSearch} onChange={e => setProfileSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={profileFilter} onChange={e => setProfileFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
-                  <option value="entregador">Entregadores</option>
-                  <option value="colaborador">Colaboradores</option>
+                  <option value="entregador">{theme.labels.entregadores}</option>
+                  <option value="colaborador">{theme.labels.colaboradores}</option>
                 </select>
               </div>
               <button onClick={loadProfiles} style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Atualizar</button>
@@ -892,9 +894,13 @@ export default function AdminPanel() {
                 <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #f0f0f0', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
                   <div>
                     <span style={{ fontWeight: 'bold', color: '#0F1849' }}>{user.name}</span>
-                    {user.role === 'admin' && <span style={{ fontSize: '0.7rem', backgroundColor: '#eab308', color: '#000', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem' }}>Admin</span>}
                     <br />
-                    <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · CPF: {user.cpf || 'Não inf.'} · {user.user_group} · {user.points} pts</span>
+                    <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>
+                      {user.user_group === 'entregador' ? theme.labels.entregador : theme.labels.colaborador}
+                    </span>
+                    {user.role === 'admin' && <span style={{ fontSize: '0.75rem', backgroundColor: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>Admin</span>}
+                    <br />
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · CPF: {user.cpf || 'Não inf.'} · {user.points} pts</span>
                   </div>
                   <button onClick={() => handleToggleAdmin(user.id, user.role)} style={{ padding: '0.4rem 0.8rem', backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                     {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
@@ -921,11 +927,11 @@ export default function AdminPanel() {
                 <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="email" placeholder="E-mail" value={emailToAdd} onChange={e => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
                   <input type="text" placeholder="CPF (Apenas números)" value={cpfToAdd} onChange={e => setCpfToAdd(e.target.value)} maxLength={14} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-                  <select value={emailGroup} onChange={e => setEmailGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }}>
-                    <option value="entregador">Entregador</option>
-                    <option value="colaborador">Colaborador</option>
+                  <select value={emailGroup} onChange={e => setEmailGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ccc' }}>
+                    <option value="entregador">{theme.labels.entregador}</option>
+                    <option value="colaborador">{theme.labels.colaborador}</option>
                   </select>
-                  <button type="submit" style={{ padding: '0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Adicionar</button>
+                  <button type="submit" style={{ padding: '0.8rem', backgroundColor: theme.primaryColor, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Adicionar</button>
                 </form>
                 {emailMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{emailMessage}</div>}
               </div>
@@ -934,7 +940,8 @@ export default function AdminPanel() {
                 <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
                   Formato esperado (sem cabeçalho):<br/>
                   <b>email,cpf,grupo,elegibilidade</b><br/>
-                  Ex: <i>joao@email.com,12345678900,entregador,sim</i>
+                  Ex: <i>joao@email.com,12345678900,entregador,sim</i><br/>
+                  <small>(Use sempre "entregador" ou "colaborador" na coluna grupo, o sistema converte visualmente se necessário).</small>
                 </p>
                 <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
@@ -967,8 +974,8 @@ export default function AdminPanel() {
                 <input type="text" placeholder="Pesquisar e-mail ou CPF..." value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={emailFilter} onChange={e => setEmailFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
-                  <option value="entregador">Entregadores</option>
-                  <option value="colaborador">Colaboradores</option>
+                  <option value="entregador">{theme.labels.entregadores}</option>
+                  <option value="colaborador">{theme.labels.colaboradores}</option>
                 </select>
               </div>
               {selectedIds.length > 0 && (
@@ -1018,9 +1025,10 @@ export default function AdminPanel() {
                     <div>
                       <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#0F1849' }}>{item.email}</span>
                       <br />
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>
-                        {item.user_group} {item.cpf ? `· CPF: ${item.cpf}` : ''}
+                      <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>
+                        {item.user_group === 'entregador' ? theme.labels.entregador : theme.labels.colaborador}
                       </span>
+                      {item.cpf ? `· CPF: ${item.cpf}` : ''}
                       {item.eligible === false && <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>Inelegível</span>}
                     </div>
                   </div>

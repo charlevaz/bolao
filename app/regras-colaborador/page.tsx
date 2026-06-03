@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
+import { getTheme } from '@/utils/theme';
 
 export default async function RegrasColaborador() {
+  const theme = getTheme();
   const supabase = createClient();
   
   // Apenas logados podem acessar
@@ -21,22 +23,22 @@ export default async function RegrasColaborador() {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', lineHeight: '1.6', color: '#fff' }}>
-      <Link href="/dashboard" style={{ color: '#60a5fa', marginBottom: '2rem', display: 'inline-block' }}>← Voltar para o Dashboard</Link>
+      <Link href="/dashboard" style={{ color: theme.id === 'barbearia' ? theme.secondaryColor : '#60a5fa', marginBottom: '2rem', display: 'inline-block' }}>← Voltar para o Dashboard</Link>
       
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#fff', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center' }}>
-        Bolão dos Colaboradores
+        Bolão dos {theme.labels.colaboradores}
       </h1>
       <h2 style={{ fontSize: '1.5rem', marginBottom: '2rem', color: '#10b981', textTransform: 'uppercase', textAlign: 'center' }}>
         Copa do Mundo 2026
       </h2>
 
       <p style={{ marginBottom: '2rem', fontSize: '1.2rem', textAlign: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '1rem', borderRadius: '8px' }}>
-        Bem-vindo à área de regras exclusivas para a equipe interna (Colaboradores).
+        Bem-vindo à área de regras exclusivas para a equipe ({theme.labels.colaboradores}).
       </p>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-        <section style={{ backgroundColor: '#0F1849', border: '1px solid #1e3a8a', padding: '2rem', borderRadius: '16px' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#60a5fa', textAlign: 'center' }}>Sistema de Pontuação</h2>
+        <section style={{ backgroundColor: theme.primaryColor, border: `1px solid ${theme.secondaryColor}`, padding: '2rem', borderRadius: '16px' }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: theme.id === 'barbearia' ? theme.secondaryColor : '#60a5fa', textAlign: 'center' }}>Sistema de Pontuação</h2>
           <ul style={{ listStyle: 'none', padding: 0 }}>
             <li style={{ marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
               Acertou o placar exato do jogo → <strong style={{ color: '#4ade80' }}>+10</strong>

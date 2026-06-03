@@ -13,10 +13,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>
-        <main className="main-container">
+      <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', margin: 0 }}>
+        <main className="main-container" style={{ flex: 1 }}>
           {children}
         </main>
+        <footer style={{ textAlign: 'center', padding: '10px', fontSize: '0.7rem', color: '#888', backgroundColor: '#f9f9f9', borderTop: '1px solid #eee' }}>
+          by: grupo cr
+        </footer>
       </body>
     </html>
   )
