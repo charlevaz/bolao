@@ -932,10 +932,12 @@ export default function AdminPanel() {
             <h2 style={{ color: '#0F1849', marginBottom: '1.5rem' }}>📧 Cadastro de Participantes</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px,1fr))', gap: '2rem', marginBottom: '2rem' }}>
               <div>
-                <h3 style={{ color: '#666', marginBottom: '1rem' }}>Adicionar E-mail</h3>
+                <h3 style={{ color: '#666', marginBottom: '1rem' }}>Adicionar Acesso</h3>
                 <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <input type="email" placeholder="E-mail" value={emailToAdd} onChange={e => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-                  <input type="text" placeholder={`${theme.documentType} (Apenas números)`} value={cpfToAdd} onChange={e => setCpfToAdd(e.target.value.replace(/\D/g, ''))} maxLength={theme.documentLength} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  <input type="text" placeholder={theme.id === 'barbearia' ? "Celular (ex: 11999999999)" : "E-mail"} value={emailToAdd} onChange={e => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  {theme.id !== 'barbearia' && (
+                    <input type="text" placeholder={`${theme.documentType} (Apenas números)`} value={cpfToAdd} onChange={e => setCpfToAdd(e.target.value.replace(/\D/g, ''))} maxLength={theme.documentLength} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  )}
                   <select value={emailGroup} onChange={e => setEmailGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ccc' }}>
                     {theme.groups.map(g => (
                       <option key={g.dbValue} value={g.dbValue}>{g.label}</option>
@@ -977,11 +979,11 @@ export default function AdminPanel() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <h3 style={{ color: '#666', margin: 0 }}>E-mails Autorizados ({allowedEmails.length})</h3>
+                <h3 style={{ color: '#666', margin: 0 }}>Participantes Autorizados ({allowedEmails.length})</h3>
                 <button onClick={handleDownloadEmails} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                   📊 Exportar Planilha
                 </button>
-                <input type="text" placeholder={`Pesquisar e-mail ou ${theme.documentType}...`} value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="text" placeholder={`Pesquisar Chave ou ${theme.documentType}...`} value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={emailFilter} onChange={e => setEmailFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
                   {theme.groups.map(g => (
