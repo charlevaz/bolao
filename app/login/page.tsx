@@ -158,22 +158,17 @@ export default function Login() {
                 },
                 forgotten_password: {
                   link_text: 'Esqueceu sua senha?',
-                  button_label: 'Enviar instruções'
+                  button_label: 'Recuperar Senha',
+                  password_label: 'Sua Senha',
+                  email_label: 'E-mail'
                 }
               }
             }}
+            theme="light"
+            providers={[]} // Desabilitar logins de terceiros (Google/Facebook)
+            redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined}
           />
         </div>
-                button_label: 'Recuperar Senha',
-                password_label: 'Sua Senha',
-                email_label: 'E-mail'
-              }
-            }
-          }}
-          theme="light"
-          providers={[]} // Desabilitar logins de terceiros (Google/Facebook)
-          redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined}
-        />
 
       </div>
     </div>
