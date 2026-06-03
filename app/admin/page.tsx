@@ -883,8 +883,9 @@ export default function AdminPanel() {
                 <input type="text" placeholder="Pesquisar nome, e-mail ou CPF..." value={profileSearch} onChange={e => setProfileSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={profileFilter} onChange={e => setProfileFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
-                  <option value="entregador">{theme.labels.entregadores}</option>
-                  <option value="colaborador">{theme.labels.colaboradores}</option>
+                  {theme.groups.map(g => (
+                    <option key={g.dbValue} value={g.dbValue}>{g.plural}</option>
+                  ))}
                 </select>
               </div>
               <button onClick={loadProfiles} style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Atualizar</button>
@@ -1036,9 +1037,9 @@ export default function AdminPanel() {
                       <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#0F1849' }}>{item.email}</span>
                       <br />
                       <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>
-                        {item.user_group === 'entregador' ? theme.labels.entregador : theme.labels.colaborador}
+                        {theme.groups.find(g => g.dbValue === item.user_group)?.label || item.user_group}
                       </span>
-                      {item.cpf ? `· CPF: ${item.cpf}` : ''}
+                      {item.cpf ? `· ${theme.documentType}: ${item.cpf}` : ''}
                       {item.eligible === false && <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>Inelegível</span>}
                     </div>
                   </div>
