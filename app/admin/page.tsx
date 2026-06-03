@@ -328,10 +328,13 @@ export default function AdminPanel() {
 
       parsed.forEach(item => {
         if (item.cpf) {
+          const matchedByCpf = existing?.find(e => e.cpf === item.cpf);
           if (matchedByCpf && matchedByCpf.email !== item.email) {
             conflicts.push({ email_csv: item.email, reason: `Documento já associado a ${matchedByCpf.email}` });
             return;
           }
+          if (seenCpfsInCsv.has(item.cpf)) {
+            const firstEmail = seenCpfsInCsv.get(item.cpf);
             if (firstEmail !== item.email) {
               conflicts.push({ email_csv: item.email, reason: `Documento duplicado nesta mesma planilha (conflita com ${firstEmail})` });
               return;
