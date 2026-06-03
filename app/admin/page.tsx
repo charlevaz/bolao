@@ -299,7 +299,7 @@ export default function AdminPanel() {
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       
       const parsed = lines.map(line => {
-        const parts = line.split(',');
+        const parts = line.split(line.includes(';') ? ';' : ',');
         const email = parts[0]?.trim();
         const cpf = parts[1]?.trim().replace(/\D/g, '') || null;
         let ug = parts[2]?.trim().toLowerCase();
@@ -319,7 +319,7 @@ export default function AdminPanel() {
         }
         
         return { email, cpf, user_group: ug, eligible };
-      }).filter(i => i.email && i.email.includes('@'));
+      }).filter(i => i.email);
       
       const existing = await fetchAllRows('allowed_emails', 'created_at', false);
       const toUpdateOrInsert: any[] = [];
@@ -372,11 +372,11 @@ export default function AdminPanel() {
       const text = event.target?.result as string;
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       
-      // Assume a primeira coluna é o e-mail (ignora cabeçalhos se não for e-mail)
+      // Assume a primeira coluna é a chave de acesso (e-mail ou celular)
       const rawEmailsToRemove = lines.map(line => {
-        const parts = line.split(',');
+        const parts = line.split(line.includes(';') ? ';' : ',');
         return parts[0]?.trim();
-      }).filter(email => email && email.includes('@'));
+      }).filter(email => email);
 
       // Filtrar admins
       const adminEmails = profiles.filter(p => p.role === 'admin').map(p => p.email);
