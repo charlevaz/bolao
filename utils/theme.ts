@@ -17,6 +17,9 @@ export const getTheme = () => {
         entregadores: 'Clientes',
         colaboradores: 'Parceiros'
       },
+      hasTwoPools: false,
+      documentType: 'Celular',
+      documentLength: 11,
       homeTitlePrefix: 'Bolão',
       homeTitleHighlight: 'Capitão da Chácara',
       homeSubtitle: 'Acompanhe os jogos da Copa do Mundo, concorra a prêmios e a cada 2 indicações ganhe um corte grátis!',
@@ -40,6 +43,9 @@ export const getTheme = () => {
       entregadores: 'Entregadores',
       colaboradores: 'Colaboradores'
     },
+    hasTwoPools: true,
+    documentType: 'CPF',
+    documentLength: 14,
     homeTitlePrefix: 'Bolão',
     homeTitleHighlight: 'EntreGô Sumarezinho, Aldeota e Recreio',
     homeSubtitle: 'Participe do nosso bolão exclusivo da Copa do Mundo 2026. Acerte os placares, acumule pontos e ganhe prêmios incríveis!',

@@ -323,15 +323,12 @@ export default function AdminPanel() {
 
       parsed.forEach(item => {
         if (item.cpf) {
-          const matchedByCpf = existing?.find(e => e.cpf === item.cpf);
           if (matchedByCpf && matchedByCpf.email !== item.email) {
-            conflicts.push({ email_csv: item.email, reason: `CPF já associado a ${matchedByCpf.email}` });
+            conflicts.push({ email_csv: item.email, reason: `Documento já associado a ${matchedByCpf.email}` });
             return;
           }
-          if (seenCpfsInCsv.has(item.cpf)) {
-            const firstEmail = seenCpfsInCsv.get(item.cpf);
             if (firstEmail !== item.email) {
-              conflicts.push({ email_csv: item.email, reason: `CPF duplicado nesta mesma planilha (conflita com ${firstEmail})` });
+              conflicts.push({ email_csv: item.email, reason: `Documento duplicado nesta mesma planilha (conflita com ${firstEmail})` });
               return;
             }
           }
@@ -815,10 +812,12 @@ export default function AdminPanel() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h2 style={{ margin: 0, color: '#0F1849', fontSize: '1.5rem' }}>🏆 Top 50 — Ranking Detalhado</h2>
               <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-                <select value={rankingFilter} onChange={e => setRankingFilter(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}>
-                  <option value="entregador">Entregadores</option>
-                  <option value="colaborador">Colaboradores</option>
-                </select>
+                {theme.hasTwoPools && (
+                  <select value={rankingFilter} onChange={e => setRankingFilter(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}>
+                    <option value="entregador">{theme.labels.entregadores}</option>
+                    <option value="colaborador">{theme.labels.colaboradores}</option>
+                  </select>
+                )}
                 <button onClick={handleDownloadRanking} style={{ padding: '0.6rem 1.2rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
                   📊 Exportar Excel
                 </button>
@@ -841,7 +840,7 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {ranking.filter(r => r.user_group === rankingFilter).slice(0, 50).map((r, i) => (
+                  {(theme.hasTwoPools ? ranking.filter(r => r.user_group === rankingFilter) : ranking).slice(0, 50).map((r, i) => (
                     <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', backgroundColor: i < 3 ? '#fffbeb' : 'transparent' }}>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: i === 0 ? '#eab308' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#555' }}>
                         {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}
@@ -900,7 +899,7 @@ export default function AdminPanel() {
                     </span>
                     {user.role === 'admin' && <span style={{ fontSize: '0.75rem', backgroundColor: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>Admin</span>}
                     <br />
-                    <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · CPF: {user.cpf || 'Não inf.'} · {user.points} pts</span>
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · {theme.documentType}: {user.cpf || 'Não inf.'} · {user.points} pts</span>
                   </div>
                   <button onClick={() => handleToggleAdmin(user.id, user.role)} style={{ padding: '0.4rem 0.8rem', backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                     {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
@@ -926,7 +925,7 @@ export default function AdminPanel() {
                 <h3 style={{ color: '#666', marginBottom: '1rem' }}>Adicionar E-mail</h3>
                 <form onSubmit={handleAddEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="email" placeholder="E-mail" value={emailToAdd} onChange={e => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
-                  <input type="text" placeholder="CPF (Apenas números)" value={cpfToAdd} onChange={e => setCpfToAdd(e.target.value)} maxLength={14} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  <input type="text" placeholder={`${theme.documentType} (Apenas números)`} value={cpfToAdd} onChange={e => setCpfToAdd(e.target.value.replace(/\D/g, ''))} maxLength={theme.documentLength} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
                   <select value={emailGroup} onChange={e => setEmailGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ccc' }}>
                     <option value="entregador">{theme.labels.entregador}</option>
                     <option value="colaborador">{theme.labels.colaborador}</option>
@@ -939,8 +938,8 @@ export default function AdminPanel() {
                 <h3 style={{ color: '#666', marginBottom: '0.5rem' }}>Importar CSV</h3>
                 <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
                   Formato esperado (sem cabeçalho):<br/>
-                  <b>email,cpf,grupo,elegibilidade</b><br/>
-                  Ex: <i>joao@email.com,12345678900,entregador,sim</i><br/>
+                  <b>email,{theme.documentType.toLowerCase()},grupo,elegibilidade</b><br/>
+                  Ex: <i>joao@email.com,{theme.documentType === 'Celular' ? '11999999999' : '12345678900'},{theme.hasTwoPools ? 'entregador' : 'colaborador'},sim</i><br/>
                   <small>(Use sempre "entregador" ou "colaborador" na coluna grupo, o sistema converte visualmente se necessário).</small>
                 </p>
                 <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -954,7 +953,7 @@ export default function AdminPanel() {
                 {csvConflicts.length > 0 && (
                   <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '8px' }}>
                     <h4 style={{ color: '#b45309', margin: '0 0 0.5rem 0' }}>Itens Ignorados (Duplicidade)</h4>
-                    <p style={{ fontSize: '0.8rem', color: '#92400e', margin: '0 0 1rem 0' }}>Os seguintes itens não foram importados pois o CPF já pertence a outra conta.</p>
+                    <p style={{ fontSize: '0.8rem', color: '#92400e', margin: '0 0 1rem 0' }}>Os seguintes itens não foram importados pois o documento já pertence a outra conta.</p>
                     <ul style={{ fontSize: '0.8rem', color: '#333', paddingLeft: '1.5rem', marginBottom: '0' }}>
                       {csvConflicts.slice(0, 10).map((c, i) => (
                         <li key={i}><b>{c.email_csv}</b>: {c.reason}</li>
@@ -971,7 +970,7 @@ export default function AdminPanel() {
                 <button onClick={handleDownloadEmails} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                   📊 Exportar Planilha
                 </button>
-                <input type="text" placeholder="Pesquisar e-mail ou CPF..." value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="text" placeholder={`Pesquisar e-mail ou ${theme.documentType}...`} value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={emailFilter} onChange={e => setEmailFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
                   <option value="entregador">{theme.labels.entregadores}</option>

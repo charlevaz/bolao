@@ -71,26 +71,36 @@ export default function Dashboard() {
       // 2. Carregar Ranking (Top 10 do mesmo grupo apenas Elegíveis)
       if (profileData) {
         if (profileData.eligible !== false) {
-          const { count } = await supabase
+          let countQuery = supabase
             .from('profiles')
             .select('id', { count: 'exact', head: true })
-            .eq('user_group', profileData.user_group)
             .eq('eligible', true)
             .or(`points.gt.${profileData.points},and(points.eq.${profileData.points},exact_scores.gt.${profileData.exact_scores})`);
+            
+          if (theme.hasTwoPools) {
+            countQuery = countQuery.eq('user_group', profileData.user_group);
+          }
+            
+          const { count } = await countQuery;
             
           setRankPos((count || 0) + 1);
         } else {
           setRankPos(null);
         }
 
-        const { data: topData } = await supabase
+        let topQuery = supabase
           .from('profiles')
           .select('*')
-          .eq('user_group', profileData.user_group)
           .eq('eligible', true)
           .order('points', { ascending: false })
           .order('exact_scores', { ascending: false })
           .limit(10);
+          
+        if (theme.hasTwoPools) {
+          topQuery = topQuery.eq('user_group', profileData.user_group);
+        }
+        
+        const { data: topData } = await topQuery;
         
         if (topData) setTopUsers(topData);
       }
@@ -347,20 +357,7 @@ export default function Dashboard() {
                 required 
                 style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem' }}
               />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ backgroundColor: theme.primaryColor, color: '#fff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Seus Pontos</div>
-              <div style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0.5rem 0' }}>{profile?.points || 0}</div>
-            </div>
-            
-            <div style={{ backgroundColor: theme.secondaryColor, color: theme.id === 'barbearia' ? '#000' : '#fff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ fontSize: '0.9rem', opacity: 0.9, fontWeight: 'bold' }}>Sua Posição</div>
-              <div style={{ fontSize: '2rem', fontWeight: '900', margin: '0.5rem 0' }}>
-                {rankPos ? `${rankPos}º` : '-'}
-              </div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 'bold' }}>entre {profile?.user_group === 'entregador' ? theme.labels.entregadores : theme.labels.colaboradores}</div>
-            </div>
-          </div>
+
               <button type="submit" style={{ padding: '0.8rem', backgroundColor: theme.primaryColor, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
                 Salvar Nome
               </button>
@@ -380,6 +377,15 @@ export default function Dashboard() {
           <div>
             <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>{profile?.name}</h1>
             <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
+              {profile?.email} • {theme.documentType}: {
+                profile?.cpf 
+                ? (theme.documentType === 'CPF' 
+                  ? profile.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+                  : profile.cpf.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')) 
+                : 'Não informado'
+              }
+            </p>
+            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
               {profile?.points} pts • {profile?.exact_scores} Placares Exatos
               {profile?.eligible === false ? (
                 <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold' }}>Não Elegível</span>
@@ -390,16 +396,36 @@ export default function Dashboard() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link href={profile?.user_group === 'colaborador' ? '/regras-colaborador' : '/regras'} style={{ padding: '0.4rem 0.8rem', backgroundColor: 'transparent', border: '1px solid #fff', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'none' }}>Regras e Prêmios</Link>
+          <Link href={!theme.hasTwoPools ? '/regras' : (profile?.user_group === 'colaborador' ? '/regras-colaborador' : '/regras')} style={{ padding: '0.4rem 0.8rem', backgroundColor: 'transparent', border: '1px solid #fff', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'none' }}>Regras e Prêmios</Link>
           {profile?.role === 'admin' && (
             <Link href="/admin" style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', textDecoration: 'none' }}>Admin</Link>
           )}
-          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.8, cursor: 'pointer', fontSize: '0.9rem' }}>Sair</button>
+          <button onClick={handleLogout} style={{ padding: '0.5rem 1rem', backgroundColor: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>Sair</button>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+      <main style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
         
+        {/* RANKING BOXES */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ backgroundColor: theme.primaryColor, color: '#fff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Seus Pontos</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '900', margin: '0.5rem 0' }}>{profile?.points || 0}</div>
+          </div>
+          
+          <div style={{ backgroundColor: theme.secondaryColor, color: theme.id === 'barbearia' ? '#000' : '#fff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9, fontWeight: 'bold' }}>Sua Posição</div>
+            <div style={{ fontSize: '2rem', fontWeight: '900', margin: '0.5rem 0' }}>
+              {rankPos ? `${rankPos}º` : '-'}
+            </div>
+            {!theme.hasTwoPools ? (
+              <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 'bold' }}>Posição Geral</div>
+            ) : (
+              <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 'bold' }}>entre {profile?.user_group === 'entregador' ? theme.labels.entregadores : theme.labels.colaboradores}</div>
+            )}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
           {/* LADO ESQUERDO: PALPITES */}
           <section style={{ flex: '1 1 600px', minWidth: '300px' }}>
