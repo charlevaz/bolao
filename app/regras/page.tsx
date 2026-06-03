@@ -16,7 +16,7 @@ export default function Regras() {
       </h2>
 
       <p style={{ marginBottom: '2rem', fontSize: '1.2rem', textAlign: 'center' }}>
-        Os <strong>50 {theme.groups[0].plural.toUpperCase()}</strong> com mais pontos ao final da Copa ganham <strong>PRÊMIOS EXCLUSIVOS</strong>
+        <strong>{theme.rules?.description}</strong>
       </p>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
@@ -41,14 +41,11 @@ export default function Regras() {
         <section style={{ backgroundColor: theme.primaryColor, border: `1px solid ${theme.secondaryColor}`, padding: '2rem', borderRadius: '16px' }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: theme.id === 'barbearia' ? theme.secondaryColor : '#60a5fa', textAlign: 'center' }}>Prêmios</h2>
           <ul style={{ listStyle: 'none', padding: 0, fontWeight: 'bold' }}>
-            <li style={{ marginBottom: '0.5rem', color: '#4ade80' }}>1º R$ 1.000,00</li>
-            <li style={{ marginBottom: '0.5rem', color: '#4ade80' }}>2º R$ 500,00</li>
-            <li style={{ marginBottom: '0.5rem', color: '#4ade80' }}>3º R$ 300,00</li>
-            <li style={{ marginBottom: '0.5rem', color: '#60a5fa' }}>4º ao 10º Jaqueta Reforçada</li>
-            <li style={{ marginBottom: '0.5rem', color: '#60a5fa' }}>11º ao 20º Jaqueta Corta Vento</li>
-            <li style={{ marginBottom: '0.5rem', color: '#60a5fa' }}>21º ao 30º Capa de Chuva Oficial</li>
-            <li style={{ marginBottom: '0.5rem', color: '#60a5fa' }}>31º ao 40º Camiseta</li>
-            <li style={{ color: '#60a5fa' }}>41º ao 50º Bag</li>
+            {theme.rules?.prizes.map((prize, index) => (
+              <li key={index} style={{ marginBottom: '0.5rem', color: prize.color }}>
+                {prize.position} {prize.description}
+              </li>
+            ))}
           </ul>
         </section>
       </div>
@@ -56,14 +53,12 @@ export default function Regras() {
       <section style={{ marginBottom: '3rem' }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: theme.id === 'barbearia' ? theme.secondaryColor : '#60a5fa' }}>Regras Gerais</h2>
         <ul style={{ listStylePosition: 'inside', opacity: 0.9, paddingLeft: '1rem', lineHeight: '1.8' }}>
-          <li>Para ser elegível ao prêmio, o entregador precisa ter feito pelo menos 10 rotas completas por semana durante a promoção. Para entregadores novos, a contagem inicia a partir da segunda semana que o cadastro foi ativado. No período de apuração final da Copa, é obrigatório estar ativo em uma das 3 franquias (Sumarezinho, Aldeota ou Recreio);</li>
-          <li>Será permitido apenas 1 palpite por jogo por CPF;</li>
-          <li>Os palpites devem ser enviados antes do início da partida;</li>
-          <li>Não será permitido alterar palpites após o fechamento.</li>
-          <li>Válido durante a copa (11 de Junho a 19 de Julho).</li>
+          {theme.rules?.generalRules.map((rule, index) => (
+            <li key={index}>{rule}</li>
+          ))}
         </ul>
         <p style={{ marginTop: '1.5rem', opacity: 0.9 }}>
-          Ao final da Copa, os 50 entregadores com maior pontuação no ranking geral serão premiados.
+          {theme.rules?.footer}
         </p>
       </section>
 

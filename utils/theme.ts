@@ -20,7 +20,23 @@ export const getTheme = () => {
       homeTitlePrefix: 'Bolão',
       homeTitleHighlight: 'Capitão da Chácara',
       homeSubtitle: 'Acompanhe os jogos da Copa do Mundo, concorra a prêmios e a cada 2 indicações ganhe um corte grátis!',
-      logos: ['/capitao_logo.png']
+      logos: ['/capitao_logo.png'],
+      rules: {
+        description: 'Os 5 clientes/parceiros com mais pontos ao final da Copa ganham PRÊMIOS EXCLUSIVOS',
+        prizes: [
+          { position: '1º', description: 'R$ 100', color: '#4ade80' },
+          { position: '2º', description: '2 Cortes de Cabelo', color: '#4ade80' },
+          { position: '3º ao 5º', description: '1 Corte de Cabelo', color: '#60a5fa' }
+        ],
+        generalRules: [
+          'É obrigatório ser cliente ou parceiro da barbearia para participar e concorrer aos prêmios;',
+          'Será permitido apenas 1 palpite por jogo por Celular;',
+          'Os palpites devem ser enviados antes do início da partida;',
+          'Não será permitido alterar palpites após o fechamento;',
+          'Válido durante a Copa do Mundo.'
+        ],
+        footer: 'Ao final da Copa, os 5 clientes com maior pontuação no ranking geral serão premiados.'
+      }
     };
   }
 
@@ -44,6 +60,27 @@ export const getTheme = () => {
     homeTitlePrefix: 'Bolão',
     homeTitleHighlight: 'EntreGô Sumarezinho, Aldeota e Recreio',
     homeSubtitle: 'Participe do nosso bolão exclusivo da Copa do Mundo 2026. Acerte os placares, acumule pontos e ganhe prêmios incríveis!',
-    logos: ['/logo-sumarezinho.png', '/logo-aldeota.png', '/logo-recreio.png']
+    logos: ['/logo-sumarezinho.png', '/logo-aldeota.png', '/logo-recreio.png'],
+    rules: {
+      description: 'Os 50 entregadores com mais pontos ao final da Copa ganham PRÊMIOS EXCLUSIVOS',
+      prizes: [
+        { position: '1º', description: 'R$ 1.000,00', color: '#4ade80' },
+        { position: '2º', description: 'R$ 500,00', color: '#4ade80' },
+        { position: '3º', description: 'R$ 300,00', color: '#4ade80' },
+        { position: '4º ao 10º', description: 'Jaqueta Reforçada', color: '#60a5fa' },
+        { position: '11º ao 20º', description: 'Jaqueta Corta Vento', color: '#60a5fa' },
+        { position: '21º ao 30º', description: 'Capa de Chuva Oficial', color: '#60a5fa' },
+        { position: '31º ao 40º', description: 'Camiseta', color: '#60a5fa' },
+        { position: '41º ao 50º', description: 'Bag', color: '#60a5fa' }
+      ],
+      generalRules: [
+        'Para ser elegível ao prêmio, o entregador precisa ter feito pelo menos 10 rotas completas por semana durante a promoção. Para entregadores novos, a contagem inicia a partir da segunda semana que o cadastro foi ativado. No período de apuração final da Copa, é obrigatório estar ativo em uma das 3 franquias (Sumarezinho, Aldeota ou Recreio);',
+        'Será permitido apenas 1 palpite por jogo por CPF;',
+        'Os palpites devem ser enviados antes do início da partida;',
+        'Não será permitido alterar palpites após o fechamento;',
+        'Válido durante a copa (11 de Junho a 19 de Julho).'
+      ],
+      footer: 'Ao final da Copa, os 50 entregadores com maior pontuação no ranking geral serão premiados.'
+    }
   };
 };
