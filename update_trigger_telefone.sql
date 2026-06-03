@@ -1,5 +1,5 @@
 -- =========================================================================
--- ATUALIZAÇÃO DO GATILHO DE SEGURANÇA: AUTORIZAÇÃO POR CELULAR
+-- ATUALIZAÇÃO DO GATILHO DE SEGURANÇA: REPARO DE CPF (ENTREGÔ E BARBEARIA)
 -- =========================================================================
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -9,8 +9,9 @@ DECLARE
     v_user_group TEXT;
     v_identifier TEXT;
     v_clean_doc TEXT;
+    v_cpf_from_db TEXT;
 BEGIN
-    -- 1. Pega o documento digitado pelo usuário na tela de cadastro (ex: celular)
+    -- 1. Pega o documento digitado pelo usuário na tela de cadastro (ex: celular ou cpf)
     v_identifier := NEW.raw_user_meta_data->>'document';
     
     -- Limpa a formatação (remove tudo que não for número) para facilitar a comparação
@@ -22,11 +23,8 @@ BEGIN
         v_clean_doc := NEW.email;
     END IF;
 
-    -- 2. Procura a autorização na tabela allowed_emails usando:
-    --    - O E-mail exato OR
-    --    - A chave exata que você cadastrou no Admin OR
-    --    - O CPF/Celular que você cadastrou
-    SELECT eligible, user_group INTO v_eligible, v_user_group 
+    -- 2. Procura a autorização na tabela allowed_emails e puxa também o CPF cadastrado lá
+    SELECT eligible, user_group, cpf INTO v_eligible, v_user_group, v_cpf_from_db
     FROM public.allowed_emails 
     WHERE email = v_identifier 
        OR email = v_clean_doc 
@@ -34,16 +32,17 @@ BEGIN
 
     -- Se não encontrar, barra o cadastro e retorna erro
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Acesso Negado: Celular ou E-mail não autorizado pela Gestão.';
+        RAISE EXCEPTION 'Acesso Negado: Chave não autorizada pela Gestão.';
     END IF;
 
     -- 3. Cria o perfil do usuário conectando a chave, o e-mail real e o grupo
+    -- A prioridade do CPF será: o que está no banco > o que ele digitou (caso seja celular)
     INSERT INTO public.profiles (id, email, name, cpf, eligible, user_group)
     VALUES (
         NEW.id,
         NEW.email,
         NEW.email,
-        v_identifier,
+        COALESCE(v_cpf_from_db, v_identifier),
         v_eligible,
         v_user_group
     );
