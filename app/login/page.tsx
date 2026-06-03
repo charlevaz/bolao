@@ -12,7 +12,6 @@ export default function Login() {
   const supabase = createClient();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Interceptar e traduzir erros do Supabase Auth no cliente
   const originalSignUp = supabase.auth.signUp.bind(supabase.auth);
@@ -103,25 +102,11 @@ export default function Login() {
           Seu e-mail deve estar autorizado pela gestão para você conseguir criar sua conta.
         </p>
 
-        <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <label style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', fontSize: '0.85rem', cursor: 'pointer', color: '#475569' }}>
-            <input 
-              type="checkbox" 
-              checked={acceptedTerms} 
-              onChange={e => setAcceptedTerms(e.target.checked)} 
-              style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer' }} 
-            />
-            <span style={{ lineHeight: '1.4' }}>
-              Declaro que li e concordo com os <Link href="/privacidade" style={{ color: theme.primaryColor, textDecoration: 'underline', fontWeight: 'bold' }}>Termos de Uso e Política de Privacidade</Link> (LGPD).
-            </span>
-          </label>
+        <div style={{ marginBottom: '1.5rem', textAlign: 'center', fontSize: '0.8rem', color: '#64748b' }}>
+          Ao criar uma conta ou fazer login, você declara que leu e concorda com os <Link href="/privacidade" style={{ color: theme.primaryColor, textDecoration: 'underline', fontWeight: 'bold' }}>Termos de Uso e LGPD</Link>.
         </div>
 
-        <div style={{ 
-          opacity: acceptedTerms ? 1 : 0.4, 
-          pointerEvents: acceptedTerms ? 'auto' : 'none',
-          transition: 'all 0.3s ease'
-        }}>
+        <div>
           <Auth
             supabaseClient={supabase}
             appearance={{
