@@ -9,7 +9,7 @@ export default function Regras() {
       <Link href="/" style={{ color: theme.id === 'barbearia' ? theme.secondaryColor : '#60a5fa', marginBottom: '2rem', display: 'inline-block' }}>← Voltar para a Home</Link>
       
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#fff', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center' }}>
-        {theme.homeTitle}
+        {theme.homeTitlePrefix} <span style={{ color: theme.highlightColor }}>{theme.homeTitleHighlight}</span>
       </h1>
       <h2 style={{ fontSize: '1.5rem', marginBottom: '2rem', color: theme.id === 'barbearia' ? theme.secondaryColor : '#60a5fa', textTransform: 'uppercase', textAlign: 'center' }}>
         Copa do Mundo 2026

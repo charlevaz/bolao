@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { getTheme } from '@/utils/theme'
 
 export const metadata: Metadata = {
   title: 'Bolão Entrego Sumarezinho',
@@ -11,9 +12,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const theme = getTheme();
   return (
     <html lang="pt-BR">
-      <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', margin: 0 }}>
+      <body style={{ backgroundColor: theme.backgroundColor, display: 'flex', flexDirection: 'column', minHeight: '100vh', margin: 0 }}>
         <main className="main-container" style={{ flex: 1 }}>
           {children}
         </main>

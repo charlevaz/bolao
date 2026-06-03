@@ -14,7 +14,7 @@ export default async function Home() {
   const theme = getTheme();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem', backgroundColor: theme.primaryColor, color: '#FFFFFF' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem', backgroundColor: theme.backgroundColor, color: '#FFFFFF' }}>
       
       {/* Logotipos */}
       <div style={{ 
@@ -30,7 +30,7 @@ export default async function Home() {
       </div>
 
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', textAlign: 'center' }}>
-        {theme.homeTitle}
+        {theme.homeTitlePrefix} <span style={{ color: theme.highlightColor }}>{theme.homeTitleHighlight}</span>
       </h1>
       
       <p style={{ fontSize: '1.2rem', marginBottom: '3rem', textAlign: 'center', maxWidth: '600px', opacity: 0.9 }}>
