@@ -20,7 +20,7 @@ export const getTheme = () => {
       homeTitlePrefix: 'Bolão',
       homeTitleHighlight: 'Capitão da Chácara',
       homeSubtitle: 'Acompanhe os jogos da Copa do Mundo, concorra a prêmios e a cada 2 indicações ganhe um corte grátis!',
-      logos: ['/capitao_logo.jpg']
+      logos: ['/capitao_logo.png']
     };
   }
 
