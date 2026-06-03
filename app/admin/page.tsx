@@ -1041,7 +1041,7 @@ export default function AdminPanel() {
                       <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>
                         {theme.groups.find(g => g.dbValue === item.user_group)?.label || item.user_group}
                       </span>
-                      {item.cpf ? `· ${theme.documentType}: ${item.cpf}` : ''}
+                      {item.cpf ? <span style={{ fontSize: '0.8rem', color: '#666' }}> · {theme.documentType}: {item.cpf}</span> : null}
                       {item.eligible === false && <span style={{ marginLeft: '0.5rem', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>Inelegível</span>}
                     </div>
                   </div>
@@ -1054,7 +1054,7 @@ export default function AdminPanel() {
                 </div>
               ))}
               {allowedEmails.filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-                 .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()) || (item.cpf && item.cpf.includes(emailSearch)))
+                 .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()) || (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, ''))))
                  .length > 100 && (
                 <p style={{ padding: '1rem', textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>Mostrando os 100 primeiros resultados. Refine a busca para encontrar mais e-mails.</p>
               )}
