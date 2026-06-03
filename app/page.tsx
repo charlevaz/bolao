@@ -39,7 +39,7 @@ export default async function Home() {
 
       <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column', width: '100%', maxWidth: '300px' }}>
         <Link href="/login" style={{ 
-          backgroundColor: theme.secondaryColor, 
+          backgroundColor: theme.buttonColor, 
           color: theme.id === 'barbearia' ? '#000' : '#FFFFFF', 
           border: 'none', 
           padding: '1rem', 
@@ -56,7 +56,7 @@ export default async function Home() {
         <Link href="/regras" style={{ 
           backgroundColor: 'transparent', 
           color: '#FFFFFF', 
-          border: `2px solid ${theme.secondaryColor}`, 
+          border: `2px solid ${theme.buttonColor}`, 
           padding: '1rem', 
           borderRadius: '8px', 
           fontSize: '1.1rem', 

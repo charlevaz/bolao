@@ -8,6 +8,7 @@ export const getTheme = () => {
       secondaryColor: '#C5A25D',
       backgroundColor: '#111A35',
       highlightColor: '#C5A25D',
+      buttonColor: '#C5A25D',
       bgLight: '#f8fafc',
       appName: 'Barbearia Capitão',
       labels: {
@@ -30,6 +31,7 @@ export const getTheme = () => {
     secondaryColor: '#eab308',
     backgroundColor: '#0F1849',
     highlightColor: '#2C67EA',
+    buttonColor: '#2C67EA',
     bgLight: '#eff6ff',
     appName: 'Bolão EntreGô',
     labels: {
