@@ -19,7 +19,7 @@ export const getTheme = () => {
       documentLength: 11,
       homeTitlePrefix: 'Bolão',
       homeTitleHighlight: 'Capitão da Chácara',
-      homeSubtitle: 'Acompanhe os jogos da Copa do Mundo, concorra a prêmios e a cada 2 indicações ganhe um corte grátis!',
+      homeSubtitle: 'Acompanhe os jogos da Copa do Mundo e concorra a prêmios incríveis!',
       logos: ['/capitao_logo.png'],
       rules: {
         description: 'Os 5 clientes/parceiros com mais pontos ao final da Copa ganham PRÊMIOS EXCLUSIVOS',
