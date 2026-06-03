@@ -26,14 +26,14 @@ export default async function RegrasColaborador() {
       <Link href="/dashboard" style={{ color: theme.id === 'barbearia' ? theme.secondaryColor : '#60a5fa', marginBottom: '2rem', display: 'inline-block' }}>← Voltar para o Dashboard</Link>
       
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#fff', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center' }}>
-        Bolão dos {theme.labels.colaboradores}
+        Bolão dos {theme.groups[1] ? theme.groups[1].plural : 'Colaboradores'}
       </h1>
       <h2 style={{ fontSize: '1.5rem', marginBottom: '2rem', color: '#10b981', textTransform: 'uppercase', textAlign: 'center' }}>
         Copa do Mundo 2026
       </h2>
 
       <p style={{ marginBottom: '2rem', fontSize: '1.2rem', textAlign: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '1rem', borderRadius: '8px' }}>
-        Bem-vindo à área de regras exclusivas para a equipe ({theme.labels.colaboradores}).
+        Bem-vindo à área de regras exclusivas para a equipe ({theme.groups[1] ? theme.groups[1].plural : 'Colaboradores'}).
       </p>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
