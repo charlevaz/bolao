@@ -88,12 +88,15 @@ export default function Login() {
         setView('sign_in');
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       if (error) {
         setErrorMsg(translateAuthError(error.message));
+      } else if (data.session) {
+        window.location.href = '/dashboard';
+        return; // não desativa o loading
       }
     }
     setLoading(false);
