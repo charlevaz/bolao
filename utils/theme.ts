@@ -19,7 +19,7 @@ export const getTheme = () => {
       documentLength: 11,
       homeTitlePrefix: 'Bolão',
       homeTitleHighlight: 'Capitão da Chácara',
-      homeSubtitle: 'Acompanhe os jogos da Copa do Mundo e concorra a prêmios incríveis!',
+      homeSubtitle: 'Aqui o seu palpite vale prêmios de verdade! Participe do nosso bolão exclusivo, viva a emoção da Copa do Mundo e descubra que ser cliente da Barbearia Capitão sempre traz as melhores vantagens.',
       logos: ['/capitao_logo.png'],
       rules: {
         description: 'Os 5 clientes/parceiros com mais pontos ao final da Copa ganham PRÊMIOS EXCLUSIVOS',
