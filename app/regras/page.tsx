@@ -16,7 +16,7 @@ export default function Regras() {
       </h2>
 
       <p style={{ marginBottom: '2rem', fontSize: '1.2rem', textAlign: 'center' }}>
-        Os <strong>50 {theme.labels.entregadores.toUpperCase()}</strong> com mais pontos ao final da Copa ganham <strong>PRÊMIOS EXCLUSIVOS</strong>
+        Os <strong>50 {theme.groups[0].plural.toUpperCase()}</strong> com mais pontos ao final da Copa ganham <strong>PRÊMIOS EXCLUSIVOS</strong>
       </p>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>

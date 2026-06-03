@@ -36,7 +36,7 @@ export default function AdminPanel() {
   // Emails
   const [emailToAdd, setEmailToAdd] = useState('');
   const [cpfToAdd, setCpfToAdd] = useState('');
-  const [emailGroup, setEmailGroup] = useState('entregador');
+  const [emailGroup, setEmailGroup] = useState(getTheme().groups[0].dbValue);
   const [emailMessage, setEmailMessage] = useState('');
   const [allowedEmails, setAllowedEmails] = useState<any[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -57,7 +57,7 @@ export default function AdminPanel() {
 
   // Ranking
   const [ranking, setRanking] = useState<any[]>([]);
-  const [rankingFilter, setRankingFilter] = useState('entregador');
+  const [rankingFilter, setRankingFilter] = useState(getTheme().groups[0].dbValue);
 
   // Matches
   const [matches, setMatches] = useState<any[]>([]);
@@ -303,7 +303,12 @@ export default function AdminPanel() {
         const email = parts[0]?.trim();
         const cpf = parts[1]?.trim().replace(/\D/g, '') || null;
         let ug = parts[2]?.trim().toLowerCase();
-        if (ug !== 'entregador' && ug !== 'colaborador') ug = 'colaborador';
+        if (theme.groups.length === 1) {
+          ug = theme.groups[0].dbValue;
+        } else {
+          const valid = theme.groups.find(g => g.dbValue === ug);
+          if (!valid) ug = theme.groups[0].dbValue;
+        }
         
         let eligible = true;
         if (parts.length > 3) {
@@ -814,8 +819,9 @@ export default function AdminPanel() {
               <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
                 {theme.hasTwoPools && (
                   <select value={rankingFilter} onChange={e => setRankingFilter(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}>
-                    <option value="entregador">{theme.labels.entregadores}</option>
-                    <option value="colaborador">{theme.labels.colaboradores}</option>
+                    {theme.groups.map(g => (
+                      <option key={g.dbValue} value={g.dbValue}>{g.plural}</option>
+                    ))}
                   </select>
                 )}
                 <button onClick={handleDownloadRanking} style={{ padding: '0.6rem 1.2rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -895,7 +901,7 @@ export default function AdminPanel() {
                     <span style={{ fontWeight: 'bold', color: '#0F1849' }}>{user.name}</span>
                     <br />
                     <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>
-                      {user.user_group === 'entregador' ? theme.labels.entregador : theme.labels.colaborador}
+                      {theme.groups.find(g => g.dbValue === user.user_group)?.label || user.user_group}
                     </span>
                     {user.role === 'admin' && <span style={{ fontSize: '0.75rem', backgroundColor: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', marginRight: '0.5rem' }}>Admin</span>}
                     <br />
@@ -927,8 +933,9 @@ export default function AdminPanel() {
                   <input type="email" placeholder="E-mail" value={emailToAdd} onChange={e => setEmailToAdd(e.target.value)} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
                   <input type="text" placeholder={`${theme.documentType} (Apenas números)`} value={cpfToAdd} onChange={e => setCpfToAdd(e.target.value.replace(/\D/g, ''))} maxLength={theme.documentLength} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ddd' }} />
                   <select value={emailGroup} onChange={e => setEmailGroup(e.target.value)} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #ccc' }}>
-                    <option value="entregador">{theme.labels.entregador}</option>
-                    <option value="colaborador">{theme.labels.colaborador}</option>
+                    {theme.groups.map(g => (
+                      <option key={g.dbValue} value={g.dbValue}>{g.label}</option>
+                    ))}
                   </select>
                   <button type="submit" style={{ padding: '0.8rem', backgroundColor: theme.primaryColor, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Adicionar</button>
                 </form>
@@ -939,8 +946,8 @@ export default function AdminPanel() {
                 <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
                   Formato esperado (sem cabeçalho):<br/>
                   <b>email,{theme.documentType.toLowerCase()},grupo,elegibilidade</b><br/>
-                  Ex: <i>joao@email.com,{theme.documentType === 'Celular' ? '11999999999' : '12345678900'},{theme.hasTwoPools ? 'entregador' : 'colaborador'},sim</i><br/>
-                  <small>(Use sempre "entregador" ou "colaborador" na coluna grupo, o sistema converte visualmente se necessário).</small>
+                  Ex: <i>joao@email.com,{theme.documentType === 'Celular' ? '11999999999' : '12345678900'},{theme.hasTwoPools ? theme.groups[0].dbValue : theme.groups[0].dbValue},sim</i><br/>
+                  <small>(Use sempre os grupos válidos na coluna grupo, o sistema converte visualmente se necessário).</small>
                 </p>
                 <form onSubmit={handleCsvUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '0.5rem' }} />
@@ -973,8 +980,9 @@ export default function AdminPanel() {
                 <input type="text" placeholder={`Pesquisar e-mail ou ${theme.documentType}...`} value={emailSearch} onChange={e => setEmailSearch(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }} />
                 <select value={emailFilter} onChange={e => setEmailFilter(e.target.value)} style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="todos">Todos</option>
-                  <option value="entregador">{theme.labels.entregadores}</option>
-                  <option value="colaborador">{theme.labels.colaboradores}</option>
+                  {theme.groups.map(g => (
+                    <option key={g.dbValue} value={g.dbValue}>{g.plural}</option>
+                  ))}
                 </select>
               </div>
               {selectedIds.length > 0 && (

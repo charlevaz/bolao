@@ -421,7 +421,7 @@ export default function Dashboard() {
             {!theme.hasTwoPools ? (
               <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 'bold' }}>Posição Geral</div>
             ) : (
-              <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 'bold' }}>entre {profile?.user_group === 'entregador' ? theme.labels.entregadores : theme.labels.colaboradores}</div>
+              <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 'bold' }}>entre {theme.groups.find(g => g.dbValue === profile?.user_group)?.plural || profile?.user_group}</div>
             )}
           </div>
         </div>

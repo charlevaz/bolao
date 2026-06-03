@@ -11,12 +11,9 @@ export const getTheme = () => {
       buttonColor: '#C5A25D',
       bgLight: '#f8fafc',
       appName: 'Barbearia Capitão',
-      labels: {
-        entregador: 'Cliente',
-        colaborador: 'Parceiro',
-        entregadores: 'Clientes',
-        colaboradores: 'Parceiros'
-      },
+      groups: [
+        { dbValue: 'barbearia', label: 'Cliente', plural: 'Clientes' }
+      ],
       hasTwoPools: false,
       documentType: 'Celular',
       documentLength: 11,
@@ -37,12 +34,10 @@ export const getTheme = () => {
     buttonColor: '#2C67EA',
     bgLight: '#eff6ff',
     appName: 'Bolão EntreGô',
-    labels: {
-      entregador: 'Entregador',
-      colaborador: 'Colaborador',
-      entregadores: 'Entregadores',
-      colaboradores: 'Colaboradores'
-    },
+    groups: [
+      { dbValue: 'entregador', label: 'Entregador', plural: 'Entregadores' },
+      { dbValue: 'colaborador', label: 'Colaborador', plural: 'Colaboradores' }
+    ],
     hasTwoPools: true,
     documentType: 'CPF',
     documentLength: 14,
