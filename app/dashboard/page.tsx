@@ -63,8 +63,8 @@ export default function Dashboard() {
       
       setProfile(profileData);
       
-      // Verifica se o nome ainda é igual a parte antes do @ no e-mail
-      if (profileData && profileData.name === profileData.email.split('@')[0]) {
+      // Verifica se o nome ainda é igual ao e-mail ou a parte antes do @
+      if (profileData && (profileData.name === profileData.email || profileData.name === profileData.email.split('@')[0])) {
         setShowNameModal(true);
       }
 
