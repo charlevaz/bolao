@@ -25,7 +25,14 @@ export default async function Home() {
         justifyContent: 'center'
       }}>
         {theme.logos.map((logo, idx) => (
-          <img key={idx} src={logo} alt={theme.appName} style={{ height: '80px', width: '80px', borderRadius: '12px', objectFit: 'contain', backgroundColor: '#FFFFFF', padding: '5px' }} />
+          <img key={idx} src={logo} alt={theme.appName} style={{ 
+            height: 'auto', 
+            width: '150px', 
+            borderRadius: '8px', 
+            objectFit: 'contain', 
+            border: `2px solid ${theme.secondaryColor}`, 
+            padding: '2px' 
+          }} />
         ))}
       </div>
 
