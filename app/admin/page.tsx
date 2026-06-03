@@ -628,7 +628,19 @@ export default function AdminPanel() {
     await supabase.from('matches').update({ score_a: null, score_b: null, status: 'pending' }).neq('id', '00000000-0000-0000-0000-000000000000');
     setMatchMessage('✅ Palpites apagados, pontos zerados e resultados resetados!');
     loadMatches();
+    loadMatches();
     loadRanking();
+  };
+
+  const handleToggleLock = async (id: string, currentLock: boolean) => {
+    setMatchMessage(currentLock ? 'Desbloqueando palpites...' : 'Bloqueando palpites...');
+    const { error } = await supabase.from('matches').update({ is_locked: !currentLock }).eq('id', id);
+    if (error) {
+      setMatchMessage(`Erro: ${error.message}`);
+    } else {
+      setMatchMessage(currentLock ? '✅ Palpites desbloqueados para o jogo.' : '🔒 Palpites bloqueados manualmente para o jogo.');
+      loadMatches();
+    }
   };
 
   const handleDownloadAudit = async () => {
@@ -1107,7 +1119,10 @@ export default function AdminPanel() {
                       <div style={{ fontWeight: 'bold', color: '#0F1849' }}>{match.team_a} x {match.team_b}</div>
                     </div>
                     {match.status === 'pending' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <button onClick={() => handleToggleLock(match.id, match.is_locked)} style={{ padding: '0.4rem 0.8rem', backgroundColor: match.is_locked ? '#10b981' : '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem' }}>
+                          {match.is_locked ? '🔓 Liberar' : '🔒 Travar'}
+                        </button>
                         <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
                         <span>x</span>
                         <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], b: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />

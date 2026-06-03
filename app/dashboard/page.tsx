@@ -239,8 +239,9 @@ export default function Dashboard() {
     }
   };
 
-  const isLocked = (dateStr: string) => {
-    const matchDate = new Date(dateStr).getTime();
+  const isLocked = (match: any) => {
+    if (match.is_locked) return true;
+    const matchDate = new Date(match.match_date).getTime();
     const now = new Date().getTime();
     return now > (matchDate - 60 * 60 * 1000); // 1 hora
   };
@@ -429,8 +430,8 @@ export default function Dashboard() {
               {filteredMatches.length === 0 ? (
                 <p style={{ color: '#888', textAlign: 'center' }}>Nenhum jogo neste dia.</p>
               ) : filteredMatches.map(match => {
-                const locked = isLocked(match.match_date) || match.status === 'finished';
-                const phaseBlocked = isPhaseBlocked(match);
+                  const locked = isLocked(match);
+                  const phaseBlocked = isPhaseBlocked(match);
                 const myGuess = guesses.find(g => g.match_id === match.id);
 
                 // Helper para bandeiras e traduções
