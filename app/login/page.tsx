@@ -68,18 +68,29 @@ export default function Login() {
     setSuccessMsg('');
 
     if (view === 'sign_up') {
-      if (!documentVal && theme.id === 'barbearia') {
+      const cleanDoc = documentVal ? documentVal.replace(/\D/g, '') : '';
+      if (!cleanDoc && theme.id === 'barbearia') {
         setErrorMsg(`Por favor, insira o seu ${theme.documentType}. Ele é obrigatório para liberar o seu acesso.`);
         setLoading(false);
         return;
       }
       
+      // Validação prévia para evitar que o erro seja mascarado pelo Supabase Auth
+      if (cleanDoc) {
+        const { data: maskedEmail } = await supabase.rpc('check_existing_cpf', { p_cpf: cleanDoc });
+        if (maskedEmail && typeof maskedEmail === 'string' && maskedEmail.toLowerCase() !== email.toLowerCase() && maskedEmail !== email) {
+          setErrorMsg(`A chave informada já está vinculada ao e-mail ${maskedEmail}. Por favor, faça login com ele.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            document: documentVal // Envia o documento (Celular) para o banco validar
+            document: documentVal // Envia o documento (Celular/CPF) para o banco validar
           }
         }
       });
