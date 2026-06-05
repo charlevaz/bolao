@@ -5,12 +5,13 @@ import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { getTheme } from '@/utils/theme';
 
-const TABS = ['ranking', 'usuarios', 'emails', 'dicionario', 'jogos', 'fases'] as const;
+const TABS = ['ranking', 'usuarios', 'precadastros', 'emails', 'dicionario', 'jogos', 'fases'] as const;
 type Tab = typeof TABS[number];
 
 const TAB_LABELS: Record<Tab, string> = {
   ranking:    '🏆 Ranking',
   usuarios:   '👑 Usuários',
+  precadastros: '⏳ Pré-cadastros',
   emails:     '📧 Participantes',
   dicionario: '🌍 Dicionário',
   jogos:      '⚽ Jogos',
@@ -923,6 +924,49 @@ export default function AdminPanel() {
               )}
               {profiles.length === 0 && <p style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Nenhum usuário cadastrado ainda.</p>}
             </div>
+          </div>
+        )}
+
+        {/* ── TAB: PRÉ-CADASTROS ──────────────────────────────────────── */}
+        {activeTab === 'precadastros' && (
+          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ color: '#0F1849', marginBottom: '0.5rem' }}>⏳ Pré-cadastros em Análise</h2>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Estes usuários se cadastraram mas os dados não constavam na lista de autorizados. Eles estão bloqueados aguardando aprovação.</p>
+            
+            {profiles.filter(p => p.user_group === 'pendente').length === 0 && (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#888', backgroundColor: '#f9f9fa', borderRadius: '8px' }}>
+                Nenhum pré-cadastro pendente no momento.
+              </div>
+            )}
+
+            {profiles.filter(p => p.user_group === 'pendente').map(user => (
+              <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fffbeb', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', color: '#0F1849', fontSize: '1rem', marginBottom: '0.2rem' }}>{user.name}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.2rem' }}>📧 {user.email}</div>
+                  {user.cpf && <div style={{ fontSize: '0.85rem', color: '#666' }}>{theme.documentType === 'Celular' ? '📱' : '📄'} {theme.documentType}: {user.cpf}</div>}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <select id={`group-${user.id}`} style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid #ccc' }}>
+                      {theme.groups.map(g => <option key={g.dbValue} value={g.dbValue}>{g.label}</option>)}
+                    </select>
+                    <button onClick={() => {
+                      const sel = document.getElementById(`group-${user.id}`) as HTMLSelectElement;
+                      handleApprovePrecadastro(user.id, user.email, user.cpf, sel.value);
+                    }} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                      Aprovar
+                    </button>
+                    <button onClick={() => handleRejectPrecadastro(user.id)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                      Rejeitar
+                    </button>
+                  </div>
+                  <a href={`https://wa.me/55${String(user.cpf).replace(/\D/g, '')}`} target="_blank" rel="noreferrer" style={{ padding: '0.4rem', backgroundColor: '#25D366', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', textDecoration: 'none' }}>
+                    💬 Chamar no WhatsApp
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

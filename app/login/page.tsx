@@ -43,9 +43,15 @@ export default function Login() {
   }, [router, supabase.auth]);
 
   const translateAuthError = (message: string): string => {
+    if (message.includes('A chave informada já está vinculada')) {
+      // Supabase Auth costuma colocar um prefixo "Database error saving new user:"
+      const parts = message.split(': ');
+      return parts.length > 1 ? parts[parts.length - 1] : message;
+    }
+
     const msg = message.toLowerCase();
-    if (msg.includes('database error saving new user') || msg.includes('database error') || msg.includes('acesso negado')) {
-      return `Acesso Negado: Seu ${theme.documentType} ou E-mail não está autorizado pela Gestão.`;
+    if (msg.includes('database error saving new user') || msg.includes('database error')) {
+      return `Erro ao processar o seu cadastro.`;
     }
     if (msg.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
     if (msg.includes('user already registered')) return 'Este e-mail já está cadastrado.';

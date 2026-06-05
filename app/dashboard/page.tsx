@@ -334,6 +334,29 @@ export default function Dashboard() {
     return <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#0F1849' }}>Carregando sua área...</div>;
   }
 
+  if (profile?.user_group === 'pendente') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#0F1849', padding: '2rem', textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+        <h1 style={{ fontSize: '2rem', color: theme.primaryColor, marginBottom: '1rem' }}>Pré-cadastro em Análise ⏳</h1>
+        <p style={{ fontSize: '1.2rem', maxWidth: '600px', lineHeight: '1.6', marginBottom: '1rem', color: '#475569' }}>
+          Recebemos o seu cadastro, mas ele ainda precisa ser liberado.
+        </p>
+        <p style={{ fontSize: '1rem', maxWidth: '600px', lineHeight: '1.6', marginBottom: '2rem', color: '#ef4444', backgroundColor: '#fee2e2', padding: '1rem', borderRadius: '8px' }}>
+          <strong>Aviso:</strong> Não foi possível validar seus dados automaticamente como {theme.id === 'barbearia' ? 'cliente parceiro' : 'entregador autônomo parceiro ativo'}.
+        </p>
+        <p style={{ fontSize: '1rem', maxWidth: '600px', lineHeight: '1.6', marginBottom: '2rem', color: '#475569' }}>
+          Caso tenha dúvidas, aguarde a aprovação manual dos administradores ou entre em contato pelo nosso WhatsApp.
+        </p>
+        <a href={`https://wa.me/${theme.rules.whatsapp}`} target="_blank" rel="noreferrer" style={{ padding: '1rem 2rem', backgroundColor: '#25D366', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.3)' }}>
+          <span>💬</span> Falar no WhatsApp
+        </a>
+        <button onClick={handleLogout} style={{ marginTop: '3rem', padding: '0.8rem 1.5rem', background: 'transparent', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+          Sair da Conta
+        </button>
+      </div>
+    );
+  }
+
   const filteredMatches = matches.filter(m => {
     const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
     return spDate === selectedDay;
