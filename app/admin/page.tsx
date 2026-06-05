@@ -154,6 +154,23 @@ export default function AdminPanel() {
     }
   };
 
+  const handleApprovePrecadastro = async (profileId: string, email: string, cpf: string, group: string) => {
+    if (!confirm(`Aprovar ${email} como ${group}?`)) return;
+    const { error: insertError } = await supabase.from('allowed_emails').insert([{ email, cpf, user_group: group, eligible: true }]);
+    if (insertError && !insertError.message.includes('unique')) {
+      alert(`Erro: ${insertError.message}`);
+      return;
+    }
+    await supabase.from('profiles').update({ user_group: group, eligible: true }).eq('id', profileId);
+    loadAll();
+  };
+
+  const handleRejectPrecadastro = async (profileId: string) => {
+    if (!confirm('Rejeitar este cadastro? Isso apagará o perfil do usuário.')) return;
+    await supabase.from('profiles').delete().eq('id', profileId);
+    loadProfiles();
+  };
+
   const handleDeleteEmail = async (id: string, email: string) => {
     const isAdminUser = profiles.some(p => p.email === email && p.role === 'admin');
     if (isAdminUser) {
