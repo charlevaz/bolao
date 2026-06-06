@@ -61,6 +61,27 @@ export default function Login() {
     return message;
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      setErrorMsg('Por favor, digite seu e-mail no campo acima para redefinir a senha.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    
+    if (error) {
+      setErrorMsg(translateAuthError(error.message));
+    } else {
+      setSuccessMsg('Enviamos um e-mail com as instruções para redefinir sua senha.');
+    }
+    setLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -77,8 +98,8 @@ export default function Login() {
       
       // Validação prévia para evitar que o erro seja mascarado pelo Supabase Auth
       if (cleanDoc) {
-        const { data: maskedEmail } = await supabase.rpc('check_existing_cpf', { p_cpf: cleanDoc });
-        if (maskedEmail && typeof maskedEmail === 'string' && maskedEmail.toLowerCase() !== email.toLowerCase() && maskedEmail !== email) {
+        const { data: maskedEmail } = await supabase.rpc('check_existing_cpf', { p_cpf: cleanDoc, p_email: email });
+        if (maskedEmail && typeof maskedEmail === 'string') {
           setErrorMsg(`A chave informada já está vinculada ao e-mail ${maskedEmail}. Por favor, faça login com ele.`);
           setLoading(false);
           return;
@@ -213,6 +234,13 @@ export default function Login() {
               placeholder="••••••••"
               style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
             />
+            {view === 'sign_in' && (
+              <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+                <button type="button" onClick={handleResetPassword} style={{ background: 'none', border: 'none', color: theme.primaryColor, fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
           </div>
 
           {view === 'sign_up' && (
