@@ -791,6 +791,25 @@ export default function AdminPanel() {
     loadRanking();
   };
 
+  const fetchAllGuesses = async () => {
+      let allData: any[] = [];
+      let from = 0;
+      const step = 1000;
+      while (true) {
+        const { data, error } = await supabase.from('guesses').select(`
+          guess_score_a, guess_score_b, points_earned, created_at,
+          profiles (name, email, user_group),
+          matches (team_a, team_b, match_date, score_a, score_b)
+        `).order('created_at', { ascending: false }).range(from, from + step - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allData = [...allData, ...data];
+        if (data.length < step) break;
+        from += step;
+      }
+      return allData;
+  };
+
   const handleToggleLock = async (id: string, currentLock: boolean) => {
     setMatchMessage(currentLock ? 'Desbloqueando palpites...' : 'Bloqueando palpites...');
     const { error } = await supabase.from('matches').update({ is_locked: !currentLock }).eq('id', id);
@@ -803,14 +822,9 @@ export default function AdminPanel() {
   };
 
   const handleDownloadAudit = async () => {
-    setMatchMessage('Gerando auditoria...');
+    setMatchMessage('Gerando auditoria (isso pode demorar se houver muitos palpites)...');
     try {
-      const { data, error } = await supabase.from('guesses').select(`
-        guess_score_a, guess_score_b, points_earned, created_at,
-        profiles (name, email, user_group),
-        matches (team_a, team_b, match_date, score_a, score_b)
-      `);
-      if (error) { setMatchMessage(`Erro: ${error.message}`); return; }
+      const data = await fetchAllGuesses();
       if (!data || data.length === 0) { setMatchMessage('Nenhum palpite ainda.'); return; }
 
       const getTipoPonto = (g: any) => {
