@@ -228,8 +228,18 @@ export default function AdminPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: email,
-          subject: 'Seu acesso foi Aprovado!',
-          html: `<p>Olá!</p><p>Seu pré-cadastro foi aprovado com sucesso como <strong>${group}</strong>.</p><p>Você já pode acessar o sistema usando o seu e-mail e a senha que você cadastrou.</p><p><a href="https://bolao.crmasterdelivery.online">Acessar o Sistema</a></p>`
+          subject: 'Seu acesso foi Aprovado! 🎉',
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+              <p>Olá!</p>
+              <p>Temos uma ótima notícia: seu pré-cadastro foi <strong>APROVADO</strong> com sucesso como <strong>${group}</strong>.</p>
+              <p>Você já pode acessar o sistema usando o seu e-mail e a senha que você cadastrou.</p>
+              <div style="margin: 20px 0;">
+                <a href="https://bolao.crmasterdelivery.online" style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acessar o Sistema</a>
+              </div>
+              <p>Em caso de dúvidas, fale conosco pelo WhatsApp: <strong>(11) 91705-0962</strong>.</p>
+            </div>
+          `
         })
       });
       if (!res.ok) {
@@ -250,16 +260,28 @@ export default function AdminPanel() {
     const reason = prompt(`Rejeitar ${email}? Informe o motivo (opcional, será enviado por e-mail):`);
     if (reason === null) return;
     
-    await supabase.from('profiles').delete().eq('id', profileId);
+    const { error: rejectError } = await supabase.from('profiles').update({ user_group: 'rejeitado', eligible: false }).eq('id', profileId);
     
+    if (rejectError) {
+      alert(`Erro ao rejeitar no banco: ${rejectError.message}`);
+      return;
+    }
+
     try {
       const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: email,
-          subject: 'Atualização sobre o seu cadastro',
-          html: `<p>Olá,</p><p>Infelizmente, o seu pré-cadastro para acesso ao sistema não foi aprovado neste momento.</p>${reason ? `<p><strong>Motivo informado pela gestão:</strong> ${reason}</p>` : ''}<p>Em caso de dúvidas, entre em contato com o suporte pelo WhatsApp.</p>`
+          subject: 'Atualização sobre o seu pré-cadastro',
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+              <p>Olá,</p>
+              <p>Infelizmente, o seu pré-cadastro para acesso ao sistema <strong>não foi aprovado</strong> neste momento.</p>
+              ${reason ? `<div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 15px 0;"><strong>Motivo informado pela gestão:</strong><br/><span style="color: #b91c1c; font-size: 1.1em;">${reason}</span></div>` : ''}
+              <p>Em caso de dúvidas, entre em contato com o suporte pelo WhatsApp: <strong>(11) 91705-0962</strong>.</p>
+            </div>
+          `
         })
       });
       if (!res.ok) {
