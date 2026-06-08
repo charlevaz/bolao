@@ -48,6 +48,8 @@ export default function AdminPanel() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [emailSearch, setEmailSearch] = useState('');
   const [emailFilter, setEmailFilter] = useState('todos');
+  const [filteredEmails, setFilteredEmails] = useState<any[]>([]);
+  const [conflictInfo, setConflictInfo] = useState<{email: string, id: string, emailToUse: string, cpf: string} | null>(null);
 
   // Users (profiles)
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -136,22 +138,47 @@ export default function AdminPanel() {
     setAllowedEmails(data);
   };
 
+  // Recalculate filteredEmails whenever source data or filters change
+  useEffect(() => {
+    const search = emailSearch.trim().toLowerCase();
+    const haLetras = /[a-z@.]/.test(search);
+    const result = allowedEmails
+      .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
+      .filter(item => {
+        if (!search) return true;
+        if (item.email.toLowerCase().includes(search)) return true;
+        if (!haLetras) {
+          const sCpf = search.replace(/\D/g, '');
+          if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+        }
+        return false;
+      });
+    setFilteredEmails(result);
+  }, [allowedEmails, emailSearch, emailFilter]);
+
+
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailMessage('Adicionando...');
+    setConflictInfo(null);
     const cleanCpf = cpfToAdd.replace(/\D/g, '') || null;
     const { error } = await supabase.from('allowed_emails').insert([{ email: emailToAdd, cpf: cleanCpf, user_group: emailGroup }]);
     if (error) {
       if (error.message.includes('unique constraint') || error.message.includes('duplicate')) {
-        // Descobrir o que conflitou
         if (cleanCpf) {
-          const { data: cpfMatch } = await supabase.from('allowed_emails').select('email').eq('cpf', cleanCpf).maybeSingle();
+          const { data: cpfMatch } = await supabase.from('allowed_emails').select('id,email').eq('cpf', cleanCpf).maybeSingle();
           if (cpfMatch) {
             setEmailMessage(`Erro: CPF já está cadastrado com o e-mail: ${cpfMatch.email}`);
           } else {
-            const { data: emailMatch } = await supabase.from('allowed_emails').select('cpf').eq('email', emailToAdd).maybeSingle();
+            const { data: emailMatch } = await supabase.from('allowed_emails').select('id,cpf').eq('email', emailToAdd).maybeSingle();
             if (emailMatch) {
-              setEmailMessage(`Erro: E-mail já cadastrado com CPF: ${emailMatch.cpf || 'sem CPF'}`);
+              if (!emailMatch.cpf) {
+                // Email exists sem CPF - oferecer para vincular
+                setConflictInfo({ email: emailToAdd, id: emailMatch.id, emailToUse: emailToAdd, cpf: cleanCpf });
+                setEmailMessage(`E-mail já existe sem CPF vinculado. Deseja vincular o CPF ${cleanCpf} a ele?`);
+              } else {
+                setEmailMessage(`Erro: E-mail já cadastrado com CPF: ${emailMatch.cpf}`);
+              }
             } else {
               setEmailMessage('Erro: E-mail ou CPF já cadastrado.');
             }
@@ -166,9 +193,25 @@ export default function AdminPanel() {
       setEmailMessage('E-mail autorizado!'); 
       setEmailToAdd(''); 
       setCpfToAdd(''); 
+      setConflictInfo(null);
       loadEmails(); 
     }
   };
+
+  const handleUpdateCpf = async () => {
+    if (!conflictInfo) return;
+    setEmailMessage('Vinculando CPF...');
+    const { error } = await supabase.from('allowed_emails').update({ cpf: conflictInfo.cpf }).eq('id', conflictInfo.id);
+    if (error) {
+      setEmailMessage(`Erro ao vincular: ${error.message}`);
+    } else {
+      setEmailMessage(`CPF ${conflictInfo.cpf} vinculado ao e-mail ${conflictInfo.email} com sucesso!`);
+      setConflictInfo(null);
+      setCpfToAdd('');
+      loadEmails();
+    }
+  };
+
 
   const handleApprovePrecadastro = async (profileId: string, email: string, cpf: string, group: string) => {
     if (!confirm(`Aprovar ${email} como ${group}?`)) return;
@@ -1047,7 +1090,20 @@ export default function AdminPanel() {
                   </select>
                   <button type="submit" style={{ padding: '0.8rem', backgroundColor: theme.primaryColor, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Adicionar</button>
                 </form>
-                {emailMessage && <div style={{ marginTop: '0.5rem', color: '#16a34a', fontSize: '0.9rem' }}>{emailMessage}</div>}
+                {emailMessage && (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: emailMessage.startsWith('Erro') ? '#dc2626' : '#16a34a' }}>
+                    {emailMessage}
+                    {conflictInfo && (
+                      <button
+                        type="button"
+                        onClick={handleUpdateCpf}
+                        style={{ marginLeft: '0.5rem', padding: '0.3rem 0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
+                      >
+                        Sim, vincular CPF
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <h3 style={{ color: '#666', marginBottom: '0.5rem' }}>Importar CSV</h3>
@@ -1081,7 +1137,9 @@ export default function AdminPanel() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <h3 style={{ color: '#666', margin: 0 }}>Participantes Autorizados ({allowedEmails.length})</h3>
+                <h3 style={{ color: '#666', margin: 0 }}>Participantes Autorizados ({allowedEmails.length})
+                  {emailSearch && <span style={{ fontSize: '0.85rem', color: '#2C67EA', marginLeft: '0.5rem' }}>– {filteredEmails.length} resultado(s)</span>}
+                </h3>
                 <button onClick={handleDownloadEmails} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                   📊 Exportar Planilha
                 </button>
@@ -1128,19 +1186,10 @@ export default function AdminPanel() {
                   <span style={{ fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>Selecionar Todos visíveis</span>
                 </div>
               )}
-              {allowedEmails
-                .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-                .filter(item => {
-                  if (emailSearch === '') return true;
-                  const sLower = emailSearch.toLowerCase();
-                  if (item.email.toLowerCase().includes(sLower)) return true;
-                  const isEmailSearch = sLower.includes('@') || /[a-z]/.test(sLower);
-                  if (!isEmailSearch) {
-                    const sCpf = emailSearch.replace(/\D/g, '');
-                    if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
-                  }
-                  return false;
-                })
+              {filteredEmails.length === 0 && emailSearch && (
+                <p style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Nenhum resultado para "{emailSearch}".</p>
+              )}
+              {filteredEmails
                 .slice(0, 100)
                 .map(item => (
                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedIds.includes(item.id) ? '#eff6ff' : '#fff' }}>
