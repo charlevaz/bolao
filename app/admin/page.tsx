@@ -223,7 +223,7 @@ export default function AdminPanel() {
     await supabase.from('profiles').update({ user_group: group, eligible: true }).eq('id', profileId);
     
     try {
-      await fetch('/api/send-email', {
+      const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -232,8 +232,15 @@ export default function AdminPanel() {
           html: `<p>Olá!</p><p>Seu pré-cadastro foi aprovado com sucesso como <strong>${group}</strong>.</p><p>Você já pode acessar o sistema usando o seu e-mail e a senha que você cadastrou.</p><p><a href="https://bolao.crmasterdelivery.online">Acessar o Sistema</a></p>`
         })
       });
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(`Aprovado no sistema, mas erro ao enviar E-mail: ${errorData.error}`);
+      } else {
+        alert(`Aprovado com sucesso! E-mail enviado para ${email}.`);
+      }
     } catch (e) {
       console.error('Falha ao enviar e-mail', e);
+      alert('Erro de conexão ao tentar enviar e-mail.');
     }
 
     loadAll();
@@ -246,7 +253,7 @@ export default function AdminPanel() {
     await supabase.from('profiles').delete().eq('id', profileId);
     
     try {
-      await fetch('/api/send-email', {
+      const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -255,8 +262,15 @@ export default function AdminPanel() {
           html: `<p>Olá,</p><p>Infelizmente, o seu pré-cadastro para acesso ao sistema não foi aprovado neste momento.</p>${reason ? `<p><strong>Motivo informado pela gestão:</strong> ${reason}</p>` : ''}<p>Em caso de dúvidas, entre em contato com o suporte pelo WhatsApp.</p>`
         })
       });
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(`Rejeitado no sistema, mas erro ao enviar E-mail: ${errorData.error}`);
+      } else {
+        alert(`Rejeitado com sucesso. E-mail de aviso enviado para ${email}.`);
+      }
     } catch (e) {
       console.error('Falha ao enviar e-mail', e);
+      alert('Erro de conexão ao tentar enviar e-mail.');
     }
 
     loadProfiles();
