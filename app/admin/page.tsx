@@ -1032,7 +1032,10 @@ export default function AdminPanel() {
         {activeTab === 'precadastros' && (
           <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             <h2 style={{ color: '#0F1849', marginBottom: '0.5rem' }}>⏳ Pré-cadastros em Análise</h2>
-            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Estes usuários se cadastraram mas os dados não constavam na lista de autorizados. Eles estão bloqueados aguardando aprovação.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <p style={{ color: '#666', fontSize: '0.9rem', margin: 0 }}>Estes usuários se cadastraram mas os dados não constavam na lista de autorizados. Eles estão bloqueados aguardando aprovação.</p>
+              <button onClick={loadProfiles} style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' }}>🔄 Atualizar</button>
+            </div>
             
             {profiles.filter(p => p.user_group === 'pendente').length === 0 && (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#888', backgroundColor: '#f9f9fa', borderRadius: '8px' }}>
