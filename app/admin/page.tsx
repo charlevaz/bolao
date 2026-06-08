@@ -243,10 +243,14 @@ export default function AdminPanel() {
     if (e.target.checked) {
       const filtered = allowedEmails
         .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-        .filter(item => emailSearch === '' || 
-          item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
-          (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, '')))
-        );
+        .filter(item => {
+          if (emailSearch === '') return true;
+          const sLower = emailSearch.toLowerCase();
+          if (item.email.toLowerCase().includes(sLower)) return true;
+          const sCpf = emailSearch.replace(/\D/g, '');
+          if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+          return false;
+        });
       setSelectedIds(filtered.map(a => a.id));
     } else {
       setSelectedIds([]);
@@ -911,11 +915,15 @@ export default function AdminPanel() {
             <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
               {profiles
                 .filter(user => profileFilter === 'todos' || user.user_group === profileFilter)
-                .filter(user => profileSearch === '' || 
-                  user.email.toLowerCase().includes(profileSearch.toLowerCase()) || 
-                  user.name.toLowerCase().includes(profileSearch.toLowerCase()) || 
-                  (user.cpf && String(user.cpf).includes(profileSearch.replace(/\D/g, '')))
-                )
+                .filter(user => {
+                  if (profileSearch === '') return true;
+                  const sLower = profileSearch.toLowerCase();
+                  if (user.email.toLowerCase().includes(sLower)) return true;
+                  if (user.name.toLowerCase().includes(sLower)) return true;
+                  const sCpf = profileSearch.replace(/\D/g, '');
+                  if (sCpf && user.cpf && String(user.cpf).includes(sCpf)) return true;
+                  return false;
+                })
                 .slice(0, 100)
                 .map(user => (
                 <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #f0f0f0', backgroundColor: user.role === 'admin' ? '#eff6ff' : '#fff' }}>
@@ -935,7 +943,15 @@ export default function AdminPanel() {
                 </div>
               ))}
               {profiles.filter(user => profileFilter === 'todos' || user.user_group === profileFilter)
-                 .filter(user => profileSearch === '' || user.email.toLowerCase().includes(profileSearch.toLowerCase()) || user.name.toLowerCase().includes(profileSearch.toLowerCase()) || (user.cpf && String(user.cpf).includes(profileSearch.replace(/\D/g, ''))))
+                 .filter(user => {
+                   if (profileSearch === '') return true;
+                   const sLower = profileSearch.toLowerCase();
+                   if (user.email.toLowerCase().includes(sLower)) return true;
+                   if (user.name.toLowerCase().includes(sLower)) return true;
+                   const sCpf = profileSearch.replace(/\D/g, '');
+                   if (sCpf && user.cpf && String(user.cpf).includes(sCpf)) return true;
+                   return false;
+                 })
                  .length > 100 && (
                 <p style={{ padding: '1rem', textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>Mostrando os 100 primeiros resultados. Refine a busca para encontrar mais usuários.</p>
               )}
@@ -1068,10 +1084,14 @@ export default function AdminPanel() {
                       selectedIds.length > 0 && 
                       selectedIds.length === allowedEmails
                         .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-                        .filter(item => emailSearch === '' || 
-                          item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
-                          (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, '')))
-                        )
+                        .filter(item => {
+                          if (emailSearch === '') return true;
+                          const sLower = emailSearch.toLowerCase();
+                          if (item.email.toLowerCase().includes(sLower)) return true;
+                          const sCpf = emailSearch.replace(/\D/g, '');
+                          if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                          return false;
+                        })
                         .length
                     } 
                     onChange={handleSelectAll} 
@@ -1082,10 +1102,14 @@ export default function AdminPanel() {
               )}
               {allowedEmails
                 .filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-                .filter(item => emailSearch === '' || 
-                  item.email.toLowerCase().includes(emailSearch.toLowerCase()) ||
-                  (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, '')))
-                )
+                .filter(item => {
+                  if (emailSearch === '') return true;
+                  const sLower = emailSearch.toLowerCase();
+                  if (item.email.toLowerCase().includes(sLower)) return true;
+                  const sCpf = emailSearch.replace(/\D/g, '');
+                  if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                  return false;
+                })
                 .slice(0, 100)
                 .map(item => (
                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', borderBottom: '1px solid #f0f0f0', backgroundColor: selectedIds.includes(item.id) ? '#eff6ff' : '#fff' }}>
@@ -1115,7 +1139,14 @@ export default function AdminPanel() {
                 </div>
               ))}
               {allowedEmails.filter(item => emailFilter === 'todos' || item.user_group === emailFilter)
-                 .filter(item => emailSearch === '' || item.email.toLowerCase().includes(emailSearch.toLowerCase()) || (item.cpf && String(item.cpf).includes(emailSearch.replace(/\D/g, ''))))
+                 .filter(item => {
+                   if (emailSearch === '') return true;
+                   const sLower = emailSearch.toLowerCase();
+                   if (item.email.toLowerCase().includes(sLower)) return true;
+                   const sCpf = emailSearch.replace(/\D/g, '');
+                   if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                   return false;
+                 })
                  .length > 100 && (
                 <p style={{ padding: '1rem', textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>Mostrando os 100 primeiros resultados. Refine a busca para encontrar mais e-mails.</p>
               )}
