@@ -1,3 +1,4 @@
+// v3 - search fix
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -141,8 +142,23 @@ export default function AdminPanel() {
     const cleanCpf = cpfToAdd.replace(/\D/g, '') || null;
     const { error } = await supabase.from('allowed_emails').insert([{ email: emailToAdd, cpf: cleanCpf, user_group: emailGroup }]);
     if (error) {
-      if (error.message.includes('unique constraint')) {
-        setEmailMessage('Erro: Este E-mail ou CPF já está cadastrado.');
+      if (error.message.includes('unique constraint') || error.message.includes('duplicate')) {
+        // Descobrir o que conflitou
+        if (cleanCpf) {
+          const { data: cpfMatch } = await supabase.from('allowed_emails').select('email').eq('cpf', cleanCpf).maybeSingle();
+          if (cpfMatch) {
+            setEmailMessage(`Erro: CPF já está cadastrado com o e-mail: ${cpfMatch.email}`);
+          } else {
+            const { data: emailMatch } = await supabase.from('allowed_emails').select('cpf').eq('email', emailToAdd).maybeSingle();
+            if (emailMatch) {
+              setEmailMessage(`Erro: E-mail já cadastrado com CPF: ${emailMatch.cpf || 'sem CPF'}`);
+            } else {
+              setEmailMessage('Erro: E-mail ou CPF já cadastrado.');
+            }
+          }
+        } else {
+          setEmailMessage('Erro: Este E-mail já está cadastrado.');
+        }
       } else {
         setEmailMessage(`Erro: ${error.message}`);
       }
