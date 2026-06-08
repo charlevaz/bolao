@@ -247,8 +247,11 @@ export default function AdminPanel() {
           if (emailSearch === '') return true;
           const sLower = emailSearch.toLowerCase();
           if (item.email.toLowerCase().includes(sLower)) return true;
-          const sCpf = emailSearch.replace(/\D/g, '');
-          if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+          const isEmailSearch = sLower.includes('@') || /[a-z]/.test(sLower);
+          if (!isEmailSearch) {
+            const sCpf = emailSearch.replace(/\D/g, '');
+            if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+          }
           return false;
         });
       setSelectedIds(filtered.map(a => a.id));
@@ -920,8 +923,11 @@ export default function AdminPanel() {
                   const sLower = profileSearch.toLowerCase();
                   if (user.email.toLowerCase().includes(sLower)) return true;
                   if (user.name.toLowerCase().includes(sLower)) return true;
-                  const sCpf = profileSearch.replace(/\D/g, '');
-                  if (sCpf && user.cpf && String(user.cpf).includes(sCpf)) return true;
+                  const isEmailSearch = sLower.includes('@') || /[a-z]/.test(sLower);
+                  if (!isEmailSearch) {
+                    const sCpf = profileSearch.replace(/\D/g, '');
+                    if (sCpf && user.cpf && String(user.cpf).includes(sCpf)) return true;
+                  }
                   return false;
                 })
                 .slice(0, 100)
@@ -948,8 +954,11 @@ export default function AdminPanel() {
                    const sLower = profileSearch.toLowerCase();
                    if (user.email.toLowerCase().includes(sLower)) return true;
                    if (user.name.toLowerCase().includes(sLower)) return true;
-                   const sCpf = profileSearch.replace(/\D/g, '');
-                   if (sCpf && user.cpf && String(user.cpf).includes(sCpf)) return true;
+                   const isEmailSearch = sLower.includes('@') || /[a-z]/.test(sLower);
+                   if (!isEmailSearch) {
+                     const sCpf = profileSearch.replace(/\D/g, '');
+                     if (sCpf && user.cpf && String(user.cpf).includes(sCpf)) return true;
+                   }
                    return false;
                  })
                  .length > 100 && (
@@ -1088,8 +1097,11 @@ export default function AdminPanel() {
                           if (emailSearch === '') return true;
                           const sLower = emailSearch.toLowerCase();
                           if (item.email.toLowerCase().includes(sLower)) return true;
-                          const sCpf = emailSearch.replace(/\D/g, '');
-                          if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                          const isEmailSearch = sLower.includes('@') || /[a-z]/.test(sLower);
+                          if (!isEmailSearch) {
+                            const sCpf = emailSearch.replace(/\D/g, '');
+                            if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                          }
                           return false;
                         })
                         .length
@@ -1106,8 +1118,11 @@ export default function AdminPanel() {
                   if (emailSearch === '') return true;
                   const sLower = emailSearch.toLowerCase();
                   if (item.email.toLowerCase().includes(sLower)) return true;
-                  const sCpf = emailSearch.replace(/\D/g, '');
-                  if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                  const isEmailSearch = sLower.includes('@') || /[a-z]/.test(sLower);
+                  if (!isEmailSearch) {
+                    const sCpf = emailSearch.replace(/\D/g, '');
+                    if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                  }
                   return false;
                 })
                 .slice(0, 100)
@@ -1143,8 +1158,11 @@ export default function AdminPanel() {
                    if (emailSearch === '') return true;
                    const sLower = emailSearch.toLowerCase();
                    if (item.email.toLowerCase().includes(sLower)) return true;
-                   const sCpf = emailSearch.replace(/\D/g, '');
-                   if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                   const isEmailSearch = sLower.includes('@') || /[a-z]/.test(sLower);
+                   if (!isEmailSearch) {
+                     const sCpf = emailSearch.replace(/\D/g, '');
+                     if (sCpf && item.cpf && String(item.cpf).includes(sCpf)) return true;
+                   }
                    return false;
                  })
                  .length > 100 && (
