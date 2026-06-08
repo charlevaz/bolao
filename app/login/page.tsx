@@ -230,7 +230,7 @@ export default function Login() {
             <strong>Seu e-mail não está na lista de acesso.</strong><br/><br/>
             Seus dados foram encaminhados para análise. Caso você seja um {theme.id === 'barbearia' ? 'parceiro ativo' : 'entregador autônomo parceiro ativo'}, você receberá um e-mail confirmando a liberação assim que for aprovado.
             <br/><br/>
-            <span style={{ fontSize: '0.85rem' }}>Dúvidas? Fale pelo <a href="https://wa.me/5585999999999" target="_blank" style={{ color: '#16a34a', fontWeight: 'bold' }}>WhatsApp</a></span>
+            <span style={{ fontSize: '0.85rem' }}>Dúvidas? Fale pelo <a href="https://wa.me/5511917050962" target="_blank" style={{ color: '#16a34a', fontWeight: 'bold' }}>WhatsApp</a></span>
           </div>
         )}
 
