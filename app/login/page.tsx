@@ -21,6 +21,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isPrecadastro, setIsPrecadastro] = useState(false);
 
   useEffect(() => {
     // Escutar mudanças de autenticação
@@ -108,33 +109,36 @@ export default function Login() {
         password,
         options: {
           data: {
-            document: documentVal // Envia o documento (Celular/CPF) para o banco validar
+            document: documentVal
           }
         }
       });
       
       if (error) {
-        setErrorMsg(translateAuthError(error.message));
+        const translated = translateAuthError(error.message);
+        // Se o erro for "database error" genérico, significa que o trigger falhou
+        // O usuário será informado que o pré-cadastro foi registrado
+        if (error.message.toLowerCase().includes('database error') || error.message.toLowerCase().includes('unexpected_failure')) {
+          setIsPrecadastro(true);
+          setErrorMsg('');
+        } else {
+          setErrorMsg(translated);
+        }
       } else if (data?.user) {
         if (data.session) {
-          // Confirmação de e-mail desligada - usuário já logou
-          // Verifica se está pendente ou aprovado
           const { data: profile } = await supabase.from('profiles').select('user_group').eq('id', data.user.id).single();
           if (profile?.user_group === 'pendente') {
-            setSuccessMsg('Pré-cadastro realizado! Seus dados foram enviados para análise. Você será notificado assim que aprovado.');
+            setIsPrecadastro(true);
             setEmail('');
             setPassword('');
             setDocumentVal('');
-            setView('sign_in');
-            // Desloga pois ainda está pendente
             await supabase.auth.signOut();
           } else {
             window.location.href = '/dashboard';
             return;
           }
         } else {
-          // Confirmação de e-mail ativa - aguardando confirmação
-          setSuccessMsg('Cadastro recebido! Verifique sua caixa de entrada para confirmar o e-mail e acessar o sistema.');
+          setIsPrecadastro(true);
           setEmail('');
           setPassword('');
           setDocumentVal('');
@@ -217,6 +221,16 @@ export default function Login() {
         {errorMsg && (
           <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center' }}>
             {errorMsg}
+          </div>
+        )}
+
+        {isPrecadastro && (
+          <div style={{ padding: '1.2rem', backgroundColor: '#fffbeb', border: '1px solid #f59e0b', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center', color: '#92400e' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⏳</div>
+            <strong>Seu e-mail não está na lista de acesso.</strong><br/><br/>
+            Seus dados foram encaminhados para análise. Caso você seja um {theme.id === 'barbearia' ? 'parceiro ativo' : 'entregador autônomo parceiro ativo'}, você receberá um e-mail confirmando a liberação assim que for aprovado.
+            <br/><br/>
+            <span style={{ fontSize: '0.85rem' }}>Dúvidas? Fale pelo <a href="https://wa.me/5585999999999" target="_blank" style={{ color: '#16a34a', fontWeight: 'bold' }}>WhatsApp</a></span>
           </div>
         )}
 
