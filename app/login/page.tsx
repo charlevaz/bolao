@@ -25,16 +25,29 @@ export default function Login() {
 
   useEffect(() => {
     // Escutar mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        router.push('/');
+        const { data: profile } = await supabase.from('profiles').select('user_group').eq('id', session.user.id).single();
+        if (profile?.user_group === 'pendente') {
+          setIsPrecadastro(true);
+          await supabase.auth.signOut();
+        } else if (event === 'SIGNED_IN') {
+          router.push('/');
+        }
       }
     });
 
     // Checar se já está logado
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        router.push('/');
+        const { data: profile } = await supabase.from('profiles').select('user_group').eq('id', session.user.id).single();
+        if (profile?.user_group === 'pendente') {
+          setIsPrecadastro(true);
+          await supabase.auth.signOut();
+          setChecking(false);
+        } else {
+          router.push('/');
+        }
       } else {
         setChecking(false);
       }
