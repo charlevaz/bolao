@@ -43,21 +43,18 @@ export default function Login() {
   }, [router, supabase.auth]);
 
   const translateAuthError = (message: string): string => {
-    if (message.includes('A chave informada já está vinculada')) {
-      // Supabase Auth costuma colocar um prefixo "Database error saving new user:"
-      const parts = message.split(': ');
-      return parts.length > 1 ? parts[parts.length - 1] : message;
-    }
-
     const msg = message.toLowerCase();
-    if (msg.includes('database error saving new user') || msg.includes('database error')) {
-      return `Erro ao processar o seu cadastro.`;
+    // Erros vindos do trigger do banco de dados (Supabase encapsula com prefixo)
+    if (message.includes('A chave informada')) {
+      // Remove prefixo do Supabase Auth para mostrar a mensagem do trigger limpa
+      return message.replace(/^.*?: /, '');
     }
-    if (msg.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
-    if (msg.includes('user already registered')) return 'Este e-mail já está cadastrado.';
-    if (msg.includes('email not confirmed')) return 'Por favor, confirme seu e-mail.';
-    if (msg.includes('password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (msg.includes('invalid login credentials') || msg.includes('invalid email or password')) return 'E-mail ou senha inválidos.';
+    if (msg.includes('email not confirmed')) return 'E-mail ainda não confirmado. Verifique sua caixa de entrada.';
+    if (msg.includes('user already registered')) return 'Este e-mail já está cadastrado. Tente fazer login.';
+    if (msg.includes('password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.';
     if (msg.includes('signup requires a valid email')) return 'Por favor, insira um e-mail válido.';
+    if (msg.includes('database error') || msg.includes('unexpected_failure')) return 'Erro ao processar o seu cadastro. Verifique os dados e tente novamente.';
     return message;
   };
 
@@ -118,12 +115,31 @@ export default function Login() {
       
       if (error) {
         setErrorMsg(translateAuthError(error.message));
-      } else if (data?.user && data?.session === null) {
-        setSuccessMsg('Conta criada com sucesso! Verifique sua caixa de entrada para confirmar o e-mail.');
-        setEmail('');
-        setPassword('');
-        setDocumentVal('');
-        setView('sign_in');
+      } else if (data?.user) {
+        if (data.session) {
+          // Confirmação de e-mail desligada - usuário já logou
+          // Verifica se está pendente ou aprovado
+          const { data: profile } = await supabase.from('profiles').select('user_group').eq('id', data.user.id).single();
+          if (profile?.user_group === 'pendente') {
+            setSuccessMsg('Pré-cadastro realizado! Seus dados foram enviados para análise. Você será notificado assim que aprovado.');
+            setEmail('');
+            setPassword('');
+            setDocumentVal('');
+            setView('sign_in');
+            // Desloga pois ainda está pendente
+            await supabase.auth.signOut();
+          } else {
+            window.location.href = '/dashboard';
+            return;
+          }
+        } else {
+          // Confirmação de e-mail ativa - aguardando confirmação
+          setSuccessMsg('Cadastro recebido! Verifique sua caixa de entrada para confirmar o e-mail e acessar o sistema.');
+          setEmail('');
+          setPassword('');
+          setDocumentVal('');
+          setView('sign_in');
+        }
       }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({
