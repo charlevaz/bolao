@@ -221,12 +221,44 @@ export default function AdminPanel() {
       return;
     }
     await supabase.from('profiles').update({ user_group: group, eligible: true }).eq('id', profileId);
+    
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email,
+          subject: 'Seu acesso foi Aprovado!',
+          html: `<p>Olá!</p><p>Seu pré-cadastro foi aprovado com sucesso como <strong>${group}</strong>.</p><p>Você já pode acessar o sistema usando o seu e-mail e a senha que você cadastrou.</p><p><a href="https://bolao.crmasterdelivery.online">Acessar o Sistema</a></p>`
+        })
+      });
+    } catch (e) {
+      console.error('Falha ao enviar e-mail', e);
+    }
+
     loadAll();
   };
 
-  const handleRejectPrecadastro = async (profileId: string) => {
-    if (!confirm('Rejeitar este cadastro? Isso apagará o perfil do usuário.')) return;
+  const handleRejectPrecadastro = async (profileId: string, email: string) => {
+    const reason = prompt(`Rejeitar ${email}? Informe o motivo (opcional, será enviado por e-mail):`);
+    if (reason === null) return;
+    
     await supabase.from('profiles').delete().eq('id', profileId);
+    
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email,
+          subject: 'Atualização sobre o seu cadastro',
+          html: `<p>Olá,</p><p>Infelizmente, o seu pré-cadastro para acesso ao sistema não foi aprovado neste momento.</p>${reason ? `<p><strong>Motivo informado pela gestão:</strong> ${reason}</p>` : ''}<p>Em caso de dúvidas, entre em contato com o suporte pelo WhatsApp.</p>`
+        })
+      });
+    } catch (e) {
+      console.error('Falha ao enviar e-mail', e);
+    }
+
     loadProfiles();
   };
 
@@ -1061,7 +1093,7 @@ export default function AdminPanel() {
                     }} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
                       Aprovar
                     </button>
-                    <button onClick={() => handleRejectPrecadastro(user.id)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                    <button onClick={() => handleRejectPrecadastro(user.id, user.email)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
                       Rejeitar
                     </button>
                   </div>
