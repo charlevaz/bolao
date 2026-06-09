@@ -56,6 +56,10 @@ export default function AdminPanel() {
   const [profileSearch, setProfileSearch] = useState('');
   const [profileFilter, setProfileFilter] = useState('todos');
 
+  // Dashboard Usuarios
+  const [userDash, setUserDash] = useState<{ totalActive: number, colaborZero: number, entregZero: number } | null>(null);
+  const [loadingDash, setLoadingDash] = useState(false);
+
   // Dictionary
   const [translations, setTranslations] = useState<any[]>([]);
 
@@ -580,6 +584,38 @@ export default function AdminPanel() {
     setProfiles(data);
   };
 
+  const loadDashboard = async () => {
+    setLoadingDash(true);
+    try {
+      const activeProfiles = profiles.filter(p => p.eligible !== false && p.user_group !== 'pendente' && p.user_group !== 'rejeitado' && p.user_group !== 'barbearia');
+      let allGuessedUserIds = new Set<string>();
+      let from = 0;
+      const step = 1000;
+      while(true) {
+        const { data, error } = await supabase.from('guesses').select('user_id').range(from, from + step - 1);
+        if (error || !data || data.length === 0) break;
+        data.forEach(d => allGuessedUserIds.add(d.user_id));
+        if (data.length < step) break;
+        from += step;
+      }
+
+      let colaborZero = 0;
+      let entregZero = 0;
+
+      activeProfiles.forEach(p => {
+        if (!allGuessedUserIds.has(p.id)) {
+          if (p.user_group === 'entregador') entregZero++;
+          else colaborZero++;
+        }
+      });
+
+      setUserDash({ totalActive: activeProfiles.length, colaborZero, entregZero });
+    } catch (err) {
+      console.error(err);
+    }
+    setLoadingDash(false);
+  };
+
   const handleToggleAdmin = async (id: string, currentRole: string) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     if (!window.confirm(`Alterar para ${newRole}?`)) return;
@@ -1056,6 +1092,35 @@ export default function AdminPanel() {
               </div>
               <button onClick={loadProfiles} style={{ padding: '0.5rem 1rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Atualizar</button>
             </div>
+
+            {/* Dashboardzinho */}
+            <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <h3 style={{ margin: 0, color: '#0F1849', fontSize: '1.1rem' }}>Visão Geral de Palpites</h3>
+                {userDash ? (
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                    <div style={{ backgroundColor: '#fff', padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', flex: '1 1 120px' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Usuários Ativos</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e3a8a' }}>{userDash.totalActive}</div>
+                    </div>
+                    <div style={{ backgroundColor: '#fef2f2', padding: '0.8rem', borderRadius: '6px', border: '1px solid #fca5a5', flex: '1 1 150px' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#991b1b', lineHeight: '1.2' }}>Colaboradores <br/>(Zero Palpites)</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc2626' }}>{userDash.colaborZero}</div>
+                    </div>
+                    <div style={{ backgroundColor: '#fef2f2', padding: '0.8rem', borderRadius: '6px', border: '1px solid #fca5a5', flex: '1 1 150px' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#991b1b', lineHeight: '1.2' }}>Entregadores <br/>(Zero Palpites)</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc2626' }}>{userDash.entregZero}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>Clique no botão ao lado para escanear todos os palpites.</p>
+                )}
+              </div>
+              <button onClick={loadDashboard} disabled={loadingDash} style={{ padding: '0.8rem 1.2rem', backgroundColor: '#eab308', color: '#fff', border: 'none', borderRadius: '8px', cursor: loadingDash ? 'not-allowed' : 'pointer', fontWeight: 'bold', height: 'fit-content' }}>
+                {loadingDash ? 'Carregando...' : '📊 Gerar Relatório Rápido'}
+              </button>
+            </div>
+
             <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
               {profiles
                 .filter(user => profileFilter === 'todos' || user.user_group === profileFilter)

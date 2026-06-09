@@ -138,9 +138,9 @@ export async function GET(request: Request) {
       const html = `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; color: #334155; line-height: 1.6; background-color: #f1f5f9; padding: 20px; border-radius: 10px;">
           <div style="text-align: center; margin-bottom: 25px; background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-            <img src="${SITE_URL}/logo-aldeota.png" style="height: 45px; margin: 0 15px; vertical-align: middle;" alt="Aldeota"/>
-            <img src="${SITE_URL}/logo-recreio.png" style="height: 45px; margin: 0 15px; vertical-align: middle;" alt="Recreio"/>
-            <img src="${SITE_URL}/logo-sumarezinho.png" style="height: 45px; margin: 0 15px; vertical-align: middle;" alt="Sumarezinho"/>
+            <img src="${SITE_URL}/logo-aldeota.png" style="height: 80px; margin: 0 15px; vertical-align: middle;" alt="Aldeota"/>
+            <img src="${SITE_URL}/logo-recreio.png" style="height: 80px; margin: 0 15px; vertical-align: middle;" alt="Recreio"/>
+            <img src="${SITE_URL}/logo-sumarezinho.png" style="height: 80px; margin: 0 15px; vertical-align: middle;" alt="Sumarezinho"/>
           </div>
           
           <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
