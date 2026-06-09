@@ -101,7 +101,7 @@ export default function Login() {
 
     if (view === 'sign_up') {
       const cleanDoc = documentVal ? documentVal.replace(/\D/g, '') : '';
-      if (!cleanDoc && theme.id === 'barbearia') {
+      if (!cleanDoc) {
         setErrorMsg(`Por favor, insira o seu ${theme.documentType}. Ele é obrigatório para liberar o seu acesso.`);
         setLoading(false);
         return;
