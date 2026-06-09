@@ -57,7 +57,7 @@ export default function AdminPanel() {
   const [profileFilter, setProfileFilter] = useState('todos');
 
   // Dashboard Usuarios
-  const [userDash, setUserDash] = useState<{ totalActive: number, colaborZero: number, entregZero: number } | null>(null);
+  const [userDash, setUserDash] = useState<{ totalActive: number, colaborZero: number, entregZero: number, colaborAtivos: number, entregAtivos: number } | null>(null);
   const [loadingDash, setLoadingDash] = useState(false);
 
   // Dictionary
@@ -601,15 +601,26 @@ export default function AdminPanel() {
 
       let colaborZero = 0;
       let entregZero = 0;
+      let colaborAtivos = 0;
+      let entregAtivos = 0;
 
       activeProfiles.forEach(p => {
-        if (!allGuessedUserIds.has(p.id)) {
-          if (p.user_group === 'entregador') entregZero++;
-          else colaborZero++;
+        if (p.user_group === 'entregador') {
+          entregAtivos++;
+          if (!allGuessedUserIds.has(p.id)) entregZero++;
+        } else {
+          colaborAtivos++;
+          if (!allGuessedUserIds.has(p.id)) colaborZero++;
         }
       });
 
-      setUserDash({ totalActive: activeProfiles.length, colaborZero, entregZero });
+      setUserDash({ 
+        totalActive: activeProfiles.length, 
+        colaborZero, 
+        entregZero, 
+        colaborAtivos, 
+        entregAtivos 
+      });
     } catch (err) {
       console.error(err);
     }
@@ -1103,9 +1114,17 @@ export default function AdminPanel() {
                       <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Usuários Ativos</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e3a8a' }}>{userDash.totalActive}</div>
                     </div>
+                    <div style={{ backgroundColor: '#f0fdf4', padding: '0.8rem', borderRadius: '6px', border: '1px solid #86efac', flex: '1 1 150px' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#166534', lineHeight: '1.2' }}>Colaboradores <br/>(Ativos)</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#15803d' }}>{userDash.colaborAtivos}</div>
+                    </div>
                     <div style={{ backgroundColor: '#fef2f2', padding: '0.8rem', borderRadius: '6px', border: '1px solid #fca5a5', flex: '1 1 150px' }}>
                       <div style={{ fontSize: '0.8rem', color: '#991b1b', lineHeight: '1.2' }}>Colaboradores <br/>(Zero Palpites)</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc2626' }}>{userDash.colaborZero}</div>
+                    </div>
+                    <div style={{ backgroundColor: '#f0fdf4', padding: '0.8rem', borderRadius: '6px', border: '1px solid #86efac', flex: '1 1 150px' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#166534', lineHeight: '1.2' }}>Entregadores <br/>(Ativos)</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#15803d' }}>{userDash.entregAtivos}</div>
                     </div>
                     <div style={{ backgroundColor: '#fef2f2', padding: '0.8rem', borderRadius: '6px', border: '1px solid #fca5a5', flex: '1 1 150px' }}>
                       <div style={{ fontSize: '0.8rem', color: '#991b1b', lineHeight: '1.2' }}>Entregadores <br/>(Zero Palpites)</div>
