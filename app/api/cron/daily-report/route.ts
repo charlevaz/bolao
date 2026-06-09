@@ -26,13 +26,14 @@ export async function GET(request: Request) {
     const yesterdayBrt = new Date(nowBrt.getTime() - 24 * 60 * 60 * 1000);
     const yesterdayStr = yesterdayBrt.toISOString().split('T')[0];
 
-    // 1. Fetch all eligible profiles
-    const { data: profiles, error: profErr } = await supabase
+    // 1. Fetch all eligible profiles (handling cases where eligible is NULL)
+    const { data: allProfiles, error: profErr } = await supabase
       .from('profiles')
-      .select('*')
-      .eq('eligible', true);
+      .select('*');
     
-    if (profErr || !profiles) throw new Error(profErr?.message || 'Error fetching profiles');
+    if (profErr || !allProfiles) throw new Error(profErr?.message || 'Error fetching profiles');
+    
+    const profiles = allProfiles.filter(p => p.eligible !== false && p.user_group !== 'pendente' && p.user_group !== 'rejeitado');
 
     // 2. Fetch Today's matches
     const { data: todayMatches } = await supabase
