@@ -88,6 +88,7 @@ export default async function RegrasColaborador() {
           <li>Será permitido apenas 1 palpite por jogo por E-mail;</li>
           <li>Os palpites devem ser enviados antes do início da partida;</li>
           <li>Não será permitido alterar palpites após o fechamento.</li>
+          <li>Critérios de desempate: 1º Maior número de placares exatos; 2º Maior número de vencedores acertados; 3º Maior número de participações (palpites registrados).</li>
           <li>A premiação será distribuída de forma fixa para os 6 primeiros colocados no ranking final.</li>
         </ul>
       </section>

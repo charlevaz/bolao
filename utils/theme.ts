@@ -81,6 +81,7 @@ export const getTheme = () => {
         'Será permitido apenas 1 palpite por jogo por CPF;',
         'Os palpites devem ser enviados antes do início da partida;',
         'Não será permitido alterar palpites após o fechamento;',
+        'Critérios de desempate: 1º Maior número de placares exatos; 2º Maior número de vencedores acertados; 3º Maior número de participações (palpites registrados).',
         'Válido durante a copa (11 de Junho a 19 de Julho).'
       ],
       footer: 'Ao final da Copa, os 50 entregadores com maior pontuação no ranking geral serão premiados.',

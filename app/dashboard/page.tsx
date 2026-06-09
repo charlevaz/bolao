@@ -75,7 +75,7 @@ export default function Dashboard() {
             .from('public_profiles')
             .select('id', { count: 'exact', head: true })
             .eq('eligible', true)
-            .or(`points.gt.${profileData.points},and(points.eq.${profileData.points},exact_scores.gt.${profileData.exact_scores})`);
+            .or(`points.gt.${profileData.points},and(points.eq.${profileData.points},exact_scores.gt.${profileData.exact_scores}),and(points.eq.${profileData.points},exact_scores.eq.${profileData.exact_scores},winner_scores.gt.${profileData.winner_scores}),and(points.eq.${profileData.points},exact_scores.eq.${profileData.exact_scores},winner_scores.eq.${profileData.winner_scores},participations.gt.${profileData.participations})`);
             
           if (theme.hasTwoPools) {
             countQuery = countQuery.eq('user_group', profileData.user_group);
@@ -94,6 +94,8 @@ export default function Dashboard() {
           .eq('eligible', true)
           .order('points', { ascending: false })
           .order('exact_scores', { ascending: false })
+          .order('winner_scores', { ascending: false })
+          .order('participations', { ascending: false })
           .limit(10);
           
         if (theme.hasTwoPools) {
@@ -639,7 +641,9 @@ export default function Dashboard() {
                           <span style={{ fontSize: '0.95rem', fontWeight: '900', color: '#0F1849' }}>
                             {user.name} {isMe && <span style={{ fontSize: '0.65rem', backgroundColor: '#2C67EA', color: '#fff', padding: '2px 6px', borderRadius: '10px', marginLeft: '0.5rem', verticalAlign: 'middle' }}>Você</span>}
                           </span>
-                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{user.exact_scores} Placares Exatos</span>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            {user.exact_scores || 0} Exatos | {user.winner_scores || 0} Vencedores | {user.participations || 0} Palpites
+                          </span>
                         </div>
                       </div>
                       <span style={{ fontSize: '1.2rem', fontWeight: '900', color }}>{user.points}</span>
