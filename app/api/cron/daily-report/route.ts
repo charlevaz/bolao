@@ -12,7 +12,8 @@ export async function GET(request: Request) {
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    // O ideal é usar o SERVICE_ROLE_KEY para ignorar o RLS de segurança (pois o cron não está logado)
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Calculate Today and Yesterday in BRT (UTC-3)
