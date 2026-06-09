@@ -658,7 +658,7 @@ export default function AdminPanel() {
     let from = 0;
     const step = 1000;
     while (true) {
-      const { data, error } = await supabase.from('guesses').select('points_earned, guess_score_a, guess_score_b, user_id').not('points_earned', 'is', null).range(from, from + step - 1);
+      const { data, error } = await supabase.from('guesses').select('points_earned, guess_score_a, guess_score_b, user_id').range(from, from + step - 1);
       if (error || !data || data.length === 0) break;
       guessesData = [...guessesData, ...data];
       if (data.length < step) break;
@@ -669,11 +669,13 @@ export default function AdminPanel() {
     if (!profilesData) return;
     const statsMap: any = {};
     profilesData.forEach((p: any) => {
-      statsMap[p.id] = { id: p.id, name: p.name, email: p.email, user_group: p.user_group, points: 0, exact: 0, winner: 0, tie: 0, single_goal: 0 };
+      statsMap[p.id] = { id: p.id, name: p.name, email: p.email, user_group: p.user_group, points: 0, exact: 0, winner: 0, tie: 0, single_goal: 0, participations: 0 };
     });
     if (guessesData) {
       guessesData.forEach((g: any) => {
-        if (!statsMap[g.user_id] || !g.points_earned) return;
+        if (!statsMap[g.user_id]) return;
+        statsMap[g.user_id].participations++;
+        if (!g.points_earned) return;
         statsMap[g.user_id].points += g.points_earned;
         if (g.points_earned === 10) statsMap[g.user_id].exact++;
         else if (g.points_earned === 3) {
@@ -686,6 +688,7 @@ export default function AdminPanel() {
       if (b.points !== a.points) return b.points - a.points;
       if (b.exact !== a.exact) return b.exact - a.exact;
       if (b.winner !== a.winner) return b.winner - a.winner;
+      if (b.participations !== a.participations) return b.participations - a.participations;
       if (b.tie !== a.tie) return b.tie - a.tie;
       return b.single_goal - a.single_goal;
     });
@@ -695,8 +698,8 @@ export default function AdminPanel() {
   const handleDownloadRanking = () => {
     const list = ranking.filter(r => r.user_group === rankingFilter).slice(0, 50);
     if (list.length === 0) { alert('Nenhum dado para exportar.'); return; }
-    const headers = ['Posição', 'Nome', 'E-mail', 'Grupo', 'Pontos', 'Exatos(+10)', 'Vencedor(+3)', 'Empate(+3)', 'Gol(+1)'];
-    const rows = list.map((r, i) => [i + 1, `"${r.name}"`, `"${r.email}"`, `"${r.user_group}"`, r.points, r.exact, r.winner, r.tie, r.single_goal]);
+    const headers = ['Posição', 'Nome', 'E-mail', 'Grupo', 'Pontos', 'Exatos(+10)', 'Vencedor(+3)', 'Participações', 'Empate(+3)', 'Gol(+1)'];
+    const rows = list.map((r, i) => [i + 1, `"${r.name}"`, `"${r.email}"`, `"${r.user_group}"`, r.points, r.exact, r.winner, r.participations, r.tie, r.single_goal]);
     const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1057,6 +1060,7 @@ export default function AdminPanel() {
                     <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Pontos</th>
                     <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Exatos</th>
                     <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Vencedor</th>
+                    <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Part.</th>
                     <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Empate</th>
                     <th style={{ padding: '0.8rem', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Gol Iso.</th>
                   </tr>
@@ -1074,12 +1078,13 @@ export default function AdminPanel() {
                       <td style={{ padding: '0.8rem', textAlign: 'center', fontSize: '1.1rem', fontWeight: '900', color: '#2C67EA' }}>{r.points}</td>
                       <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.exact}</td>
                       <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.winner}</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.participations}</td>
                       <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.tie}</td>
                       <td style={{ padding: '0.8rem', textAlign: 'center', color: '#0F1849', fontWeight: '600' }}>{r.single_goal}</td>
                     </tr>
                   ))}
                   {ranking.filter(r => r.user_group === rankingFilter).length === 0 && (
-                    <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Ninguém pontuou ainda.</td></tr>
+                    <tr><td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Ninguém pontuou ainda.</td></tr>
                   )}
                 </tbody>
               </table>
