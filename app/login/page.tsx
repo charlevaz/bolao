@@ -293,10 +293,10 @@ export default function Login() {
               </label>
               <input 
                 type="text" 
-                required={theme.id === 'barbearia'}
+                required={true}
                 value={documentVal}
                 onChange={e => setDocumentVal(e.target.value)}
-                placeholder={theme.id === 'barbearia' ? "(11) 99999-9999" : "Opcional"}
+                placeholder="000.000.000-00"
                 style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
               />
             </div>
