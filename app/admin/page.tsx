@@ -166,6 +166,12 @@ export default function AdminPanel() {
     setEmailMessage('Adicionando...');
     setConflictInfo(null);
     const cleanCpf = cpfToAdd.replace(/\D/g, '') || null;
+    
+    if (theme.id !== 'barbearia' && cleanCpf && cleanCpf.length !== 11) {
+      setEmailMessage('Erro: O CPF deve conter exatamente 11 dígitos.');
+      return;
+    }
+
     const { error } = await supabase.from('allowed_emails').insert([{ email: emailToAdd, cpf: cleanCpf, user_group: emailGroup }]);
     if (error) {
       if (error.message.includes('unique constraint') || error.message.includes('duplicate')) {

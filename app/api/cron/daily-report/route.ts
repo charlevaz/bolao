@@ -99,12 +99,12 @@ export async function GET(request: Request) {
           let realScore = (m.score_a !== null && m.score_b !== null) ? `${m.score_a} x ${m.score_b}` : 'Pendente';
           
           return `
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
-              <div style="font-weight: bold; color: #1e3a8a; font-size: 1.1em; margin-bottom: 5px;">${m.team_a} x ${m.team_b}</div>
-              <div style="display: flex; justify-content: space-between; align-items: center; background-color: #fff; padding: 8px; border-radius: 4px;">
-                <span style="font-size: 0.9em; color: #475569;">Placar Real: <strong>${realScore}</strong></span>
-                <span style="font-size: 0.9em; color: #475569;">Seu Palpite: <strong>${guessText}</strong></span>
-                <span style="font-size: 1em; color: #eab308; font-weight: bold; padding: 4px 8px; background-color: #fef9c3; border-radius: 4px;">+${points} pts</span>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+              <div style="font-weight: bold; color: #1e3a8a; font-size: 1.1em; margin-bottom: 8px; text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">${m.team_a} x ${m.team_b}</div>
+              <div style="background-color: #fff; padding: 12px; border-radius: 6px; text-align: center;">
+                <div style="margin-bottom: 6px; font-size: 0.95em; color: #475569;">Oficial: <strong style="color: #0f172a; font-size: 1.1em;">${realScore}</strong></div>
+                <div style="margin-bottom: 12px; font-size: 0.95em; color: #475569;">Seu Palpite: <strong style="color: #0f172a; font-size: 1.1em;">${guessText}</strong></div>
+                <div><span style="font-size: 1.1em; color: #b45309; font-weight: bold; padding: 6px 12px; background-color: #fef9c3; border-radius: 6px; display: inline-block;">+${points} pts ganhos</span></div>
               </div>
             </div>
           `;
@@ -136,14 +136,14 @@ export async function GET(request: Request) {
       }
 
       const html = `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; color: #334155; line-height: 1.6; background-color: #f1f5f9; padding: 20px; border-radius: 10px;">
-          <div style="text-align: center; margin-bottom: 25px; background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-            <img src="${SITE_URL}/logo-aldeota.png" style="height: 80px; margin: 0 15px; vertical-align: middle;" alt="Aldeota"/>
-            <img src="${SITE_URL}/logo-recreio.png" style="height: 80px; margin: 0 15px; vertical-align: middle;" alt="Recreio"/>
-            <img src="${SITE_URL}/logo-sumarezinho.png" style="height: 80px; margin: 0 15px; vertical-align: middle;" alt="Sumarezinho"/>
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; color: #334155; line-height: 1.6; background-color: #f1f5f9; padding: 10px; border-radius: 10px;">
+          <div style="text-align: center; margin-bottom: 20px; background-color: white; padding: 15px 5px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            <img src="${SITE_URL}/logo-aldeota.png" style="max-width: 28%; height: auto; margin: 0 2%; vertical-align: middle;" alt="Aldeota"/>
+            <img src="${SITE_URL}/logo-recreio.png" style="max-width: 28%; height: auto; margin: 0 2%; vertical-align: middle;" alt="Recreio"/>
+            <img src="${SITE_URL}/logo-sumarezinho.png" style="max-width: 28%; height: auto; margin: 0 2%; vertical-align: middle;" alt="Sumarezinho"/>
           </div>
           
-          <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <div style="background-color: white; padding: 20px 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
             <h2 style="color: #1e3a8a; text-align: center; font-size: 1.8em; margin-top: 0;">Resumo Diário - Bolão</h2>
             
             <p style="font-size: 1.1em;">Olá, <strong>${profile.name}</strong>!</p>
