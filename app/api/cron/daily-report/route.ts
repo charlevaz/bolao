@@ -6,71 +6,115 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    console.log('[Daily Report Cron] Job started');
+
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const url = new URL(request.url);
+    const bypassKey = url.searchParams.get('bypass');
+    
+    const cronSecret = process.env.CRON_SECRET;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isBypassAuthorized = !!(bypassKey && cronSecret && bypassKey === cronSecret);
+
+    if (!isDevelopment && !isBypassAuthorized && authHeader !== `Bearer ${cronSecret}`) {
+      console.warn('[Daily Report Cron] Unauthorized access attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    // O ideal é usar o SERVICE_ROLE_KEY para ignorar o RLS de segurança (pois o cron não está logado)
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseKey) {
+      console.error('[Daily Report Cron] SUPABASE_SERVICE_ROLE_KEY is missing');
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Calculate Today and Yesterday in BRT (UTC-3)
-    const now = new Date();
-    const brtOffset = -3 * 60 * 60 * 1000;
-    const nowBrt = new Date(now.getTime() + brtOffset);
-    
-    const todayStr = nowBrt.toISOString().split('T')[0];
-    
-    const yesterdayBrt = new Date(nowBrt.getTime() - 24 * 60 * 60 * 1000);
-    const yesterdayStr = yesterdayBrt.toISOString().split('T')[0];
+    // Get Today and Yesterday date strings in America/Sao_Paulo timezone
+    const getBrtDateStr = (date: Date) => {
+      return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
+    };
 
-    // 1. Fetch all eligible profiles (handling cases where eligible is NULL)
+    const getMatchLocalDateStr = (matchDateStr: string) => {
+      try {
+        return new Date(matchDateStr).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
+      } catch (e) {
+        return '';
+      }
+    };
+
+    const now = new Date();
+    const todayStr = getBrtDateStr(now);
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = getBrtDateStr(yesterday);
+
+    console.log(`[Daily Report Cron] Date range - Today (BRT): ${todayStr}, Yesterday (BRT): ${yesterdayStr}`);
+
+    // 1. Fetch all profiles
+    console.log('[Daily Report Cron] Fetching profiles...');
     const { data: allProfiles, error: profErr } = await supabase
       .from('profiles')
       .select('*');
     
-    if (profErr || !allProfiles) throw new Error(profErr?.message || 'Error fetching profiles');
+    if (profErr || !allProfiles) {
+      console.error('[Daily Report Cron] Error fetching profiles:', profErr);
+      throw new Error(profErr?.message || 'Error fetching profiles');
+    }
     
     const profiles = allProfiles.filter(p => p.eligible !== false && p.user_group !== 'pendente' && p.user_group !== 'rejeitado');
+    console.log(`[Daily Report Cron] Found ${profiles.length} eligible profiles (out of ${allProfiles.length} total)`);
 
-    // 2. Fetch Today's matches
-    const { data: todayMatches } = await supabase
+    // 2. Fetch all matches
+    console.log('[Daily Report Cron] Fetching matches...');
+    const { data: allMatches, error: matchesErr } = await supabase
       .from('matches')
-      .select('*')
-      .like('match_date', `${todayStr}%`);
+      .select('*');
 
-    // 3. Fetch Yesterday's matches
-    const { data: yesterdayMatches } = await supabase
-      .from('matches')
-      .select('*')
-      .like('match_date', `${yesterdayStr}%`);
+    if (matchesErr || !allMatches) {
+      console.error('[Daily Report Cron] Error fetching matches:', matchesErr);
+      throw new Error(matchesErr?.message || 'Error fetching matches');
+    }
 
-    // 4. Fetch Guesses
-    const matchIds = [...(todayMatches || []), ...(yesterdayMatches || [])].map(m => m.id);
+    const todayMatches = allMatches.filter(m => getMatchLocalDateStr(m.match_date) === todayStr);
+    const yesterdayMatches = allMatches.filter(m => getMatchLocalDateStr(m.match_date) === yesterdayStr);
+
+    console.log(`[Daily Report Cron] Today matches: ${todayMatches.length}, Yesterday matches: ${yesterdayMatches.length}`);
+
+    // 3. Fetch Guesses for these matches
+    const matchIds = [...todayMatches, ...yesterdayMatches].map(m => m.id);
     let allGuesses: any[] = [];
     
     if (matchIds.length > 0) {
-      // Loop pagination for guesses just in case there are many users
+      console.log(`[Daily Report Cron] Fetching guesses for ${matchIds.length} matches...`);
       let from = 0;
       const step = 1000;
       while (true) {
-        const { data: guesses, error } = await supabase
+        const { data: guesses, error: guessErr } = await supabase
           .from('guesses')
           .select('*')
           .in('match_id', matchIds)
           .range(from, from + step - 1);
           
-        if (error || !guesses || guesses.length === 0) break;
+        if (guessErr) {
+          console.error('[Daily Report Cron] Error fetching guesses:', guessErr);
+          break;
+        }
+        if (!guesses || guesses.length === 0) break;
         allGuesses = [...allGuesses, ...guesses];
         if (guesses.length < step) break;
         from += step;
       }
+      console.log(`[Daily Report Cron] Fetched ${allGuesses.length} guesses`);
     }
 
     const SITE_URL = 'https://bolao.crmasterdelivery.online';
     
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.error('[Daily Report Cron] SMTP credentials are not configured');
+      throw new Error('SMTP credentials are not configured');
+    }
+
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -84,13 +128,13 @@ export async function GET(request: Request) {
     for (const profile of profiles) {
       const userGuesses = allGuesses.filter(g => g.user_id === profile.id);
       
-      const todayMatchCount = todayMatches?.length || 0;
-      const userTodayGuesses = userGuesses.filter(g => todayMatches?.some(m => m.id === g.match_id)).length;
+      const todayMatchCount = todayMatches.length;
+      const userTodayGuesses = userGuesses.filter(g => todayMatches.some(m => m.id === g.match_id)).length;
       const missingToday = todayMatchCount - userTodayGuesses;
 
       let yesterdayHtml = '';
       
-      if (yesterdayMatches && yesterdayMatches.length > 0) {
+      if (yesterdayMatches.length > 0) {
         yesterdayHtml = yesterdayMatches.map(m => {
           const guess = userGuesses.find(g => g.match_id === m.id);
           const points = guess?.points_earned || 0;
@@ -177,25 +221,36 @@ export async function GET(request: Request) {
       });
     }
 
+    console.log(`[Daily Report Cron] Ready to send ${emailsToSend.length} emails. Starting batched sending...`);
+
     let sentCount = 0;
-    for (const email of emailsToSend) {
-      try {
-        await transporter.sendMail({
-          from: `"Equipe Bolão" <${process.env.SMTP_USER}>`,
-          to: email.to,
-          subject: email.subject,
-          html: email.html,
-        });
-        sentCount++;
-      } catch (err) {
-        console.error(`Failed to send email to ${email.to}:`, err);
-      }
+    const batchSize = 10;
+    for (let i = 0; i < emailsToSend.length; i += batchSize) {
+      const batch = emailsToSend.slice(i, i + batchSize);
+      console.log(`[Daily Report Cron] Sending batch ${Math.floor(i / batchSize) + 1} (${batch.length} emails)...`);
+      
+      await Promise.allSettled(
+        batch.map(email => 
+          transporter.sendMail({
+            from: `"Equipe Bolão" <${process.env.SMTP_USER}>`,
+            to: email.to,
+            subject: email.subject,
+            html: email.html,
+          }).then(() => {
+            sentCount++;
+            console.log(`[Daily Report Cron] Email successfully sent to ${email.to}`);
+          }).catch(err => {
+            console.error(`[Daily Report Cron] Failed to send email to ${email.to}:`, err);
+          })
+        )
+      );
     }
 
+    console.log(`[Daily Report Cron] Finished sending emails. Total sent: ${sentCount}/${profiles.length}`);
     return NextResponse.json({ success: true, totalSent: sentCount, totalUsers: profiles.length });
 
   } catch (error: any) {
-    console.error('Cron job error:', error);
+    console.error('[Daily Report Cron] Cron job error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
