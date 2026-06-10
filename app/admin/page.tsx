@@ -837,8 +837,8 @@ export default function AdminPanel() {
     // 1. Apaga todos os palpites
     const { error: gErr } = await supabase.from('guesses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (gErr) { setMatchMessage(`Erro ao apagar palpites: ${gErr.message}`); return; }
-    // 2. Zera pontos e placares exatos (apenas colunas que existem)
-    await supabase.from('profiles').update({ points: 0, exact_scores: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+    // 2. Zera pontos e todos os critérios de desempate
+    await supabase.from('profiles').update({ points: 0, exact_scores: 0, winner_scores: 0, participations: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
     // 3. Reseta resultados dos jogos (mantém os jogos, zera placar)
     await supabase.from('matches').update({ score_a: null, score_b: null, status: 'pending' }).neq('id', '00000000-0000-0000-0000-000000000000');
     setMatchMessage('✅ Palpites apagados, pontos zerados e resultados resetados!');
@@ -894,8 +894,41 @@ export default function AdminPanel() {
         return `+${g.points_earned}`;
       };
 
-      const headers = ['Nome', 'E-mail', 'Grupo', 'Data do Jogo', 'Jogo', 'Palpite A', 'Palpite B', 'Placar Real', 'Pontos', 'Tipo de Ponto', 'Data/Hora do Palpite'];
-      const rows = data.map((g: any) => [
+      // ── Resumo por Participante (critérios de desempate) ──
+      const summaryMap: Record<string, { name: string; email: string; group: string; points: number; exact: number; winner: number; participations: number; tie: number; single_goal: number }> = {};
+      data.forEach((g: any) => {
+        const email = g.profiles?.email || '';
+        if (!email) return;
+        if (!summaryMap[email]) {
+          summaryMap[email] = { name: g.profiles?.name || '', email, group: g.profiles?.user_group || '', points: 0, exact: 0, winner: 0, participations: 0, tie: 0, single_goal: 0 };
+        }
+        const s = summaryMap[email];
+        s.participations++;
+        const pts = g.points_earned || 0;
+        s.points += pts;
+        if (pts === 10) s.exact++;
+        else if (pts === 3) {
+          if (g.guess_score_a === g.guess_score_b) s.tie++;
+          else s.winner++;
+        } else if (pts === 1) s.single_goal++;
+      });
+      const summaryList = Object.values(summaryMap).sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.exact !== a.exact) return b.exact - a.exact;
+        if (b.winner !== a.winner) return b.winner - a.winner;
+        return b.participations - a.participations;
+      });
+
+      const summaryTitle = ['RESUMO POR PARTICIPANTE (Critérios de Desempate)'];
+      const summaryHeaders = ['Pos', 'Nome', 'E-mail', 'Grupo', 'Pontos', '1º Desempate: Placares Exatos (+10)', '2º Desempate: Vencedores Acertados (+3)', '3º Desempate: Participações', 'Empates Acertados (+3)', 'Gol Isolado (+1)'];
+      const summaryRows = summaryList.map((s, i) => [
+        i + 1, `"${s.name}"`, `"${s.email}"`, `"${s.group}"`, s.points, s.exact, s.winner, s.participations, s.tie, s.single_goal
+      ]);
+
+      // ── Detalhamento palpite a palpite ──
+      const detailTitle = ['', '', 'DETALHAMENTO PALPITE A PALPITE'];
+      const detailHeaders = ['Nome', 'E-mail', 'Grupo', 'Data do Jogo', 'Jogo', 'Palpite A', 'Palpite B', 'Placar Real', 'Pontos', 'Tipo de Ponto', 'Data/Hora do Palpite'];
+      const detailRows = data.map((g: any) => [
         `"${g.profiles?.name || ''}"`, `"${g.profiles?.email || ''}"`, `"${g.profiles?.user_group || ''}"`,
         `"${g.matches?.match_date ? new Date(g.matches.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : ''}"`,
         `"${g.matches?.team_a} x ${g.matches?.team_b}"`,
@@ -903,7 +936,17 @@ export default function AdminPanel() {
         g.matches?.score_a !== null ? `"${g.matches?.score_a} x ${g.matches?.score_b}"` : '"Pendente"',
         g.points_earned, `"${getTipoPonto(g)}"`, `"${new Date(g.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}"` 
       ]);
-      const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+
+      const csvLines = [
+        summaryTitle.join(';'),
+        summaryHeaders.join(';'),
+        ...summaryRows.map(r => r.join(';')),
+        '',
+        detailTitle.join(';'),
+        detailHeaders.join(';'),
+        ...detailRows.map(r => r.join(';'))
+      ];
+      const csv = csvLines.join('\n');
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
