@@ -371,8 +371,8 @@ export default function Dashboard() {
       {showNameModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-            <h2 style={{ color: '#0F1849', marginTop: 0, marginBottom: '1rem' }}>Como devemos te chamar?</h2>
-            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Para que os outros participantes te reconheçam no ranking, informe o seu nome completo ou apelido.</p>
+            <h2 style={{ color: '#0F1849', marginTop: 0, marginBottom: '1rem' }}>Alterar Nome</h2>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Informe o nome que será exibido no ranking para os outros participantes.</p>
             <form onSubmit={handleSaveName} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <input 
                 type="text" 
@@ -385,6 +385,9 @@ export default function Dashboard() {
 
               <button type="submit" style={{ padding: '0.8rem', backgroundColor: theme.primaryColor, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
                 Salvar Nome
+              </button>
+              <button type="button" onClick={() => setShowNameModal(false)} style={{ padding: '0.8rem', backgroundColor: 'transparent', color: '#666', border: '1px solid #ccc', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+                Cancelar
               </button>
             </form>
           </div>
@@ -400,7 +403,14 @@ export default function Dashboard() {
             {profile?.name?.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>{profile?.name}</h1>
+            <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              {profile?.name}
+              <button 
+                onClick={() => { setNewName(profile?.name || ''); setShowNameModal(true); }} 
+                title="Alterar nome" 
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', fontSize: '0.85rem', opacity: 0.7, lineHeight: 1 }}
+              >✏️</button>
+            </h1>
             <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
               {profile?.email} • {theme.documentType}: {
                 profile?.cpf 
