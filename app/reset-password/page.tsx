@@ -20,11 +20,12 @@ export default function ResetPassword() {
   useEffect(() => {
     // 1. Verificar se existe erro no hash fragment (ex: otp_expired)
     const hash = window.location.hash;
+    const hashParams = new URLSearchParams(hash.substring(1));
+    const errorCode = hashParams.get('error_code');
+    const errorDesc = hashParams.get('error_description');
+    const hasAccessToken = hashParams.has('access_token');
+
     if (hash) {
-      const hashParams = new URLSearchParams(hash.substring(1));
-      const errorCode = hashParams.get('error_code');
-      const errorDesc = hashParams.get('error_description');
-      
       if (errorCode === 'otp_expired' || errorDesc?.toLowerCase().includes('expired') || errorDesc?.toLowerCase().includes('invalid')) {
         setError('O link de recuperação de senha expirou ou já foi utilizado. Por favor, solicite a redefinição de senha novamente na tela de login.');
         setIsCheckingSession(false);
@@ -56,7 +57,6 @@ export default function ResetPassword() {
           } else {
             setHasSession(true);
             setMessage('Autenticado com sucesso. Digite sua nova senha abaixo.');
-            // Remove o código da URL para limpar
             router.replace('/reset-password');
           }
         })
@@ -74,23 +74,43 @@ export default function ResetPassword() {
       if (session) {
         setHasSession(true);
         setMessage('Sessão de recuperação ativa. Digite sua nova senha abaixo.');
-      } else {
+        setIsCheckingSession(false);
+      } else if (!hasAccessToken) {
+        // Se não há token de acesso no hash, e não há code, e getSession retornou nulo,
+        // então realmente é um acesso inválido direto.
         setError('Acesso inválido ou sessão expirada. Por favor, solicite a redefinição de senha na tela de login.');
+        setIsCheckingSession(false);
       }
-      setIsCheckingSession(false);
+      // Se hasAccessToken for true, deixamos isCheckingSession como true e esperamos o onAuthStateChange resolver
     });
 
-    // 4. Escutar alterações no estado de autenticação
+    // 4. Escutar alterações no estado de autenticação (processamento do hash)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
         setHasSession(true);
         setMessage('Autenticado com sucesso. Digite sua nova senha abaixo.');
         setError('');
+        setIsCheckingSession(false);
       }
     });
 
+    // Timeout de segurança: se após 5 segundos com access_token ainda não autenticou, mostra erro
+    let timeoutId: NodeJS.Timeout;
+    if (hasAccessToken) {
+      timeoutId = setTimeout(() => {
+        setIsCheckingSession(currentChecking => {
+          if (currentChecking) {
+            setError('Tempo limite atingido ao carregar sessão de recuperação. Tente novamente.');
+            return false;
+          }
+          return currentChecking;
+        });
+      }, 5000);
+    }
+
     return () => {
       subscription.unsubscribe();
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [supabase, router]);
 
