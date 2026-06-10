@@ -18,31 +18,49 @@ export default function ResetPassword() {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    // 1. Verificar se existe erro no hash fragment (ex: otp_expired)
     const hash = window.location.hash;
     const hashParams = new URLSearchParams(hash.substring(1));
     const errorCode = hashParams.get('error_code');
     const errorDesc = hashParams.get('error_description');
-    const hasAccessToken = hashParams.has('access_token');
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
 
-    if (hash) {
+    // 1. Verificar se existe erro no hash fragment (ex: otp_expired)
+    if (errorCode || errorDesc) {
       if (errorCode === 'otp_expired' || errorDesc?.toLowerCase().includes('expired') || errorDesc?.toLowerCase().includes('invalid')) {
         setError('O link de recuperação de senha expirou ou já foi utilizado. Por favor, solicite a redefinição de senha novamente na tela de login.');
-        setIsCheckingSession(false);
-        return;
-      } else if (errorDesc) {
-        setError(decodeURIComponent(errorDesc.replace(/\+/g, ' ')));
-        setIsCheckingSession(false);
-        return;
+      } else {
+        setError(decodeURIComponent((errorDesc || '').replace(/\+/g, ' ')));
       }
+      setIsCheckingSession(false);
+      return;
     }
 
-    // 2. Verificar se existe um code na URL (PKCE) e trocar por sessão
+    // 2. Se existe access_token no hash, criar sessão manualmente
+    //    (a lib @supabase/ssr NÃO processa hash fragments automaticamente)
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ data, error: sessionError }) => {
+        if (sessionError) {
+          setError(`Erro ao restaurar sessão: ${sessionError.message}`);
+        } else {
+          setHasSession(true);
+          setMessage('Autenticado com sucesso. Digite sua nova senha abaixo.');
+          // Limpa o hash da URL
+          window.history.replaceState(null, '', '/reset-password');
+        }
+        setIsCheckingSession(false);
+      });
+      return;
+    }
+
+    // 3. Verificar se existe um code na URL (PKCE) e trocar por sessão
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
 
     if (code) {
-      // Corrige cookies do PKCE se necessário
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
         if (key && key.endsWith('-code-verifier')) {
@@ -69,49 +87,16 @@ export default function ResetPassword() {
       return;
     }
 
-    // 3. Verificar se já existe uma sessão ativa
+    // 4. Verificar se já existe uma sessão ativa (acesso direto à página)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setHasSession(true);
         setMessage('Sessão de recuperação ativa. Digite sua nova senha abaixo.');
-        setIsCheckingSession(false);
-      } else if (!hasAccessToken) {
-        // Se não há token de acesso no hash, e não há code, e getSession retornou nulo,
-        // então realmente é um acesso inválido direto.
+      } else {
         setError('Acesso inválido ou sessão expirada. Por favor, solicite a redefinição de senha na tela de login.');
-        setIsCheckingSession(false);
       }
-      // Se hasAccessToken for true, deixamos isCheckingSession como true e esperamos o onAuthStateChange resolver
+      setIsCheckingSession(false);
     });
-
-    // 4. Escutar alterações no estado de autenticação (processamento do hash)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-        setHasSession(true);
-        setMessage('Autenticado com sucesso. Digite sua nova senha abaixo.');
-        setError('');
-        setIsCheckingSession(false);
-      }
-    });
-
-    // Timeout de segurança: se após 5 segundos com access_token ainda não autenticou, mostra erro
-    let timeoutId: NodeJS.Timeout;
-    if (hasAccessToken) {
-      timeoutId = setTimeout(() => {
-        setIsCheckingSession(currentChecking => {
-          if (currentChecking) {
-            setError('Tempo limite atingido ao carregar sessão de recuperação. Tente novamente.');
-            return false;
-          }
-          return currentChecking;
-        });
-      }, 5000);
-    }
-
-    return () => {
-      subscription.unsubscribe();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
   }, [supabase, router]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
