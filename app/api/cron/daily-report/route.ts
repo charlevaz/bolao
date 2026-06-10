@@ -117,6 +117,8 @@ export async function GET(request: Request) {
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
+      pool: true,
+      maxConnections: 5,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
