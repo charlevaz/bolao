@@ -24,7 +24,27 @@ export default function Login() {
   const [isPrecadastro, setIsPrecadastro] = useState(false);
 
   useEffect(() => {
-    // Escutar mudanças de autenticação
+    // 1. Ler mensagens de erro da URL e hash fragment (caso de link expirado do Supabase)
+    const params = new URLSearchParams(window.location.search);
+    const messageParam = params.get('message');
+    if (messageParam) {
+      setErrorMsg(messageParam);
+    }
+
+    const hash = window.location.hash;
+    if (hash) {
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const errorCode = hashParams.get('error_code');
+      const errorDesc = hashParams.get('error_description');
+      
+      if (errorCode === 'otp_expired' || errorDesc?.toLowerCase().includes('expired') || errorDesc?.toLowerCase().includes('invalid')) {
+        setErrorMsg('O link de recuperação de senha expirou ou já foi utilizado. Por favor, solicite a redefinição novamente.');
+      } else if (errorDesc) {
+        setErrorMsg(decodeURIComponent(errorDesc.replace(/\+/g, ' ')));
+      }
+    }
+
+    // 2. Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
         const { data: profile } = await supabase.from('profiles').select('user_group').eq('id', session.user.id).single();
@@ -37,7 +57,7 @@ export default function Login() {
       }
     });
 
-    // Checar se já está logado
+    // 3. Checar se já está logado
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         const { data: profile } = await supabase.from('profiles').select('user_group').eq('id', session.user.id).single();
@@ -54,7 +74,7 @@ export default function Login() {
     });
 
     return () => subscription.unsubscribe();
-  }, [router, supabase.auth]);
+  }, [router, supabase]);
 
   const translateAuthError = (message: string): string => {
     const msg = message.toLowerCase();
