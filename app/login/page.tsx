@@ -81,14 +81,21 @@ export default function Login() {
     setErrorMsg('');
     setSuccessMsg('');
     
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    
-    if (error) {
-      setErrorMsg(translateAuthError(error.message));
-    } else {
-      setSuccessMsg('Enviamos um e-mail com as instruções para redefinir sua senha.');
+    try {
+      const res = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const result = await res.json();
+      
+      if (!res.ok || !result.success) {
+        setErrorMsg(result.error || 'Erro ao enviar e-mail de recuperação.');
+      } else {
+        setSuccessMsg('Enviamos um e-mail com as instruções para redefinir sua senha. Verifique sua caixa de entrada e spam.');
+      }
+    } catch (err: any) {
+      setErrorMsg('Erro de conexão. Tente novamente.');
     }
     setLoading(false);
   };
