@@ -414,6 +414,14 @@ export default function AdminPanel() {
     loadProfiles();
   };
 
+  const handleChangeGroup = async (userId: string, email: string, newGroup: string) => {
+    if (!confirm(`Alterar o grupo de ${email} para ${theme.groups.find(g => g.dbValue === newGroup)?.label || newGroup}?`)) return;
+    await supabase.from('profiles').update({ user_group: newGroup }).eq('id', userId);
+    await supabase.from('allowed_emails').update({ user_group: newGroup }).eq('email', email);
+    loadProfiles();
+    loadEmails();
+  };
+
   const handleDownloadEmails = () => {
     if (allowedEmails.length === 0) { alert('Nenhum dado para exportar.'); return; }
     const headers = ['E-mail', 'CPF', 'Grupo', 'Elegível', 'Data de Inclusão'];
@@ -1222,9 +1230,18 @@ export default function AdminPanel() {
                     <br />
                     <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email} · {theme.documentType}: {user.cpf || 'Não inf.'} · {user.points} pts</span>
                   </div>
-                  <button onClick={() => handleToggleAdmin(user.id, user.role)} style={{ padding: '0.4rem 0.8rem', backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                    {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <select 
+                      value={user.user_group} 
+                      onChange={(e) => handleChangeGroup(user.id, user.email, e.target.value)}
+                      style={{ padding: '0.3rem 0.5rem', borderRadius: '6px', border: '1px solid #ccc', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      {theme.groups.map(g => <option key={g.dbValue} value={g.dbValue}>{g.label}</option>)}
+                    </select>
+                    <button onClick={() => handleToggleAdmin(user.id, user.role)} style={{ padding: '0.4rem 0.8rem', backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                    </button>
+                  </div>
                 </div>
               ))}
               {profiles.filter(user => profileFilter === 'todos' || user.user_group === profileFilter)
