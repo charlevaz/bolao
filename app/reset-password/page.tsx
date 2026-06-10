@@ -14,14 +14,19 @@ export default function ResetPassword() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    // 1. Verificar se existe um code na URL
+    // 1. Verificar se já existe uma sessão ativa
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setMessage('Sessão de recuperação ativa. Digite sua nova senha abaixo.');
+      }
+    });
+
+    // 2. Verificar se existe um code na URL e trocar por sessão (caso caia direto aqui)
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
 
     if (code) {
-      // FIX: O componente Auth UI do Supabase tem um bug conhecido onde ele salva o PKCE verifier
-      // no localStorage em vez de usar os cookies do @supabase/ssr.
-      // Aqui nós pegamos o verifier do localStorage e forçamos ele para os cookies antes de validar.
+      // Corrige cookies do PKCE se necessário
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
         if (key && key.endsWith('-code-verifier')) {
@@ -29,23 +34,38 @@ export default function ResetPassword() {
         }
       }
 
-      // O SDK do Supabase (@supabase/supabase-js) detecta o parâmetro ?code= na URL 
-      // e faz a troca (exchange) automaticamente. Não precisamos (e não devemos) 
-      // chamar exchangeCodeForSession manualmente aqui, senão ele tenta usar o código 
-      // duas vezes e gera um falso erro de "PKCE code verifier not found".
+      // Faz a troca do código por sessão de forma explícita
+      setIsUpdating(true);
+      supabase.auth.exchangeCodeForSession(code)
+        .then(({ data, error }) => {
+          if (error) {
+            setError(`Erro ao autenticar código: ${error.message}`);
+          } else {
+            setMessage('Autenticado com sucesso. Digite sua nova senha abaixo.');
+            // Remove o código da URL para limpar a barra de endereços
+            router.replace('/reset-password');
+          }
+        })
+        .catch(err => {
+          setError(`Erro na troca de código: ${err.message || err}`);
+        })
+        .finally(() => {
+          setIsUpdating(false);
+        });
     }
 
-    // 2. Escuta o evento de recuperação de senha do Supabase
+    // 3. Escuta eventos de alteração de estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setMessage('Autenticado com sucesso para recuperação. Digite sua nova senha abaixo.');
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setMessage('Autenticado com sucesso. Digite sua nova senha abaixo.');
+        setError('');
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, [supabase, router]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
