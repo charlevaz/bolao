@@ -127,7 +127,7 @@ export default function AdminPanel() {
     let from = 0;
     const step = 1000;
     while (true) {
-      const { data, error } = await supabase.from(tableName).select('*').order(orderBy, { ascending }).range(from, from + step - 1);
+      const { data, error } = await supabase.from(tableName).select('*').order(orderBy, { ascending }).order('id', { ascending: true }).range(from, from + step - 1);
       if (error || !data || data.length === 0) break;
       allData = [...allData, ...data];
       if (data.length < step) break;
