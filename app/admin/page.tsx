@@ -1291,6 +1291,40 @@ export default function AdminPanel() {
                 </div>
               </div>
             ))}
+
+            <hr style={{ margin: '2rem 0', border: 'none', borderTop: '1px solid #e2e8f0' }} />
+            
+            <h2 style={{ color: '#0F1849', marginBottom: '0.5rem' }}>❌ Pré-cadastros Rejeitados</h2>
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Estes usuários foram recusados e atualmente não possuem acesso. Caso queira liberar o acesso, selecione o grupo e clique em "Liberar Acesso".</p>
+            
+            {profiles.filter(p => p.user_group === 'rejeitado').length === 0 && (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#888', backgroundColor: '#f9f9fa', borderRadius: '8px' }}>
+                Nenhum pré-cadastro rejeitado no momento.
+              </div>
+            )}
+
+            {profiles.filter(p => p.user_group === 'rejeitado').map(user => (
+              <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fef2f2', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', color: '#0F1849', fontSize: '1rem', marginBottom: '0.2rem' }}>{user.name || 'Sem nome informado'}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.2rem' }}>📧 {user.email}</div>
+                  {user.cpf && <div style={{ fontSize: '0.85rem', color: '#666' }}>{theme.documentType === 'Celular' ? '📱' : '📄'} {theme.documentType}: {user.cpf}</div>}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <select id={`reprove-group-${user.id}`} style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid #ccc' }}>
+                      {theme.groups.map(g => <option key={g.dbValue} value={g.dbValue}>{g.label}</option>)}
+                    </select>
+                    <button onClick={() => {
+                      const sel = document.getElementById(`reprove-group-${user.id}`) as HTMLSelectElement;
+                      handleApprovePrecadastro(user.id, user.email, user.cpf, sel.value);
+                    }} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                      Liberar Acesso
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
