@@ -1581,24 +1581,34 @@ export default function AdminPanel() {
             <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
               <h3 style={{ color: '#0F1849', marginBottom: '1rem' }}>Partidas Cadastradas ({matches.length})</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '600px', overflowY: 'auto' }}>
-                {matches.map(match => (
-                  <div key={match.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.8rem 1rem', border: '1px solid #eee', borderRadius: '8px', flexWrap: 'wrap' }}>
-                    <button onClick={() => handleDeleteMatch(match.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Excluir">🗑️</button>
-                    <div style={{ flex: 1, minWidth: '200px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#888' }}>{new Date(match.match_date).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | {match.status === 'pending' ? '⏳ Pendente' : '✅ Encerrado'}</div>
-                      <div style={{ fontWeight: 'bold', color: '#0F1849' }}>{match.team_a} x {match.team_b}</div>
-                    </div>
-                    {match.status === 'pending' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        <button onClick={() => handleToggleLock(match.id, match.is_locked)} style={{ padding: '0.4rem 0.8rem', backgroundColor: match.is_locked ? '#10b981' : '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem' }}>
-                          {match.is_locked ? '🔓 Liberar' : '🔒 Travar'}
-                        </button>
-                        <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        <span>x</span>
-                        <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], b: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        <button onClick={() => handleFinishMatch(match.id, false)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Encerrar</button>
+                {matches.map(match => {
+                  const matchDateMs = new Date(match.match_date).getTime();
+                  const isTimeLocked = Date.now() > (matchDateMs - 60 * 60 * 1000);
+
+                  return (
+                    <div key={match.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.8rem 1rem', border: '1px solid #eee', borderRadius: '8px', flexWrap: 'wrap', backgroundColor: isTimeLocked && match.status === 'pending' ? '#f8fafc' : 'white' }}>
+                      <button onClick={() => handleDeleteMatch(match.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Excluir">🗑️</button>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#888' }}>{new Date(match.match_date).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | {match.status === 'pending' ? '⏳ Pendente' : '✅ Encerrado'}</div>
+                        <div style={{ fontWeight: 'bold', color: '#0F1849' }}>{match.team_a} x {match.team_b}</div>
                       </div>
-                    ) : (
+                      {match.status === 'pending' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {isTimeLocked ? (
+                            <span style={{ padding: '0.4rem 0.8rem', backgroundColor: '#64748b', color: '#fff', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem', cursor: 'not-allowed' }} title="Travado automaticamente por estar a menos de 1 hora do jogo">
+                              🔒 Tempo Esgotado
+                            </span>
+                          ) : (
+                            <button onClick={() => handleToggleLock(match.id, match.is_locked)} style={{ padding: '0.4rem 0.8rem', backgroundColor: match.is_locked ? '#10b981' : '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem' }}>
+                              {match.is_locked ? '🔓 Liberar' : '🔒 Travar'}
+                            </button>
+                          )}
+                          <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                          <span>x</span>
+                          <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], b: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
+                          <button onClick={() => handleFinishMatch(match.id, false)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Encerrar</button>
+                        </div>
+                      ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <input type="number" min="0" placeholder={match.score_a} value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
                         <span style={{ fontWeight: 'bold', color: '#10b981' }}>x</span>
@@ -1607,8 +1617,9 @@ export default function AdminPanel() {
                       </div>
                     )}
                   </div>
-                ))}
-                {matches.length === 0 && <p style={{ color: '#888', textAlign: 'center', padding: '2rem' }}>Nenhum jogo cadastrado.</p>}
+                );
+              })}
+              {matches.length === 0 && <p style={{ color: '#888', textAlign: 'center', padding: '2rem' }}>Nenhum jogo cadastrado.</p>}
               </div>
             </div>
           </div>
