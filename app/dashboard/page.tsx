@@ -336,18 +336,26 @@ export default function Dashboard() {
     return <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#0F1849' }}>Carregando sua área...</div>;
   }
 
-  if (profile?.user_group === 'pendente') {
+  if (profile?.user_group === 'pendente' || profile?.user_group === 'rejeitado') {
+    const isRejected = profile.user_group === 'rejeitado';
+    
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#0F1849', padding: '2rem', textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
-        <h1 style={{ fontSize: '2rem', color: theme.primaryColor, marginBottom: '1rem' }}>Pré-cadastro em Análise ⏳</h1>
+        <h1 style={{ fontSize: '2rem', color: isRejected ? '#ef4444' : theme.primaryColor, marginBottom: '1rem' }}>
+          {isRejected ? 'Cadastro Recusado ❌' : 'Pré-cadastro em Análise ⏳'}
+        </h1>
         <p style={{ fontSize: '1.2rem', maxWidth: '600px', lineHeight: '1.6', marginBottom: '1rem', color: '#475569' }}>
-          Recebemos o seu cadastro, mas ele ainda precisa ser liberado.
+          {isRejected 
+            ? 'Infelizmente o seu cadastro não foi aprovado para participar do bolão.' 
+            : 'Recebemos o seu cadastro, mas ele ainda precisa ser liberado.'}
         </p>
         <p style={{ fontSize: '1rem', maxWidth: '600px', lineHeight: '1.6', marginBottom: '2rem', color: '#ef4444', backgroundColor: '#fee2e2', padding: '1rem', borderRadius: '8px' }}>
-          <strong>Aviso:</strong> Não foi possível validar seus dados automaticamente como {theme.id === 'barbearia' ? 'cliente parceiro' : 'entregador autônomo parceiro ativo'}.
+          <strong>Aviso:</strong> {isRejected 
+            ? 'Os administradores revisaram seus dados e o acesso foi negado.' 
+            : `Não foi possível validar seus dados automaticamente como ${theme.id === 'barbearia' ? 'cliente parceiro' : 'entregador autônomo parceiro ativo'}.`}
         </p>
         <p style={{ fontSize: '1rem', maxWidth: '600px', lineHeight: '1.6', marginBottom: '2rem', color: '#475569' }}>
-          Caso tenha dúvidas, aguarde a aprovação manual dos administradores ou entre em contato pelo nosso WhatsApp.
+          Caso tenha dúvidas ou acredite que isso seja um engano, entre em contato pelo nosso WhatsApp.
         </p>
         <a href={`https://wa.me/${theme.rules.whatsapp}`} target="_blank" rel="noreferrer" style={{ padding: '1rem 2rem', backgroundColor: '#25D366', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.3)' }}>
           <span>💬</span> Falar no WhatsApp

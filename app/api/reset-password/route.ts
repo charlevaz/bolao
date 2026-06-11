@@ -19,11 +19,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Usa a service_role key para gerar o link de reset
+    // Usa a service_role key para ignorar RLS e verificar o perfil
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    // 1. Verifica se o usuário existe e o status dele
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('user_group')
+      .eq('email', email)
+      .single();
+
+    if (profileError || !profileData) {
+      return NextResponse.json({ success: false, error: 'E-mail não cadastrado em nosso sistema.' }, { status: 404 });
+    }
+
+    if (profileData.user_group === 'rejeitado') {
+      return NextResponse.json({ success: false, error: 'Seu cadastro foi recusado. Não é possível alterar a senha.' }, { status: 403 });
+    }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bolao.crmasterdelivery.online';
 
@@ -37,10 +52,6 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      // Se o e-mail não existe, não revelamos isso por segurança
-      if (error.message.includes('User not found') || error.message.includes('Unable to validate')) {
-        return NextResponse.json({ success: true }); // Responde como se tivesse enviado
-      }
       console.error('Supabase generateLink error:', error.message);
       return NextResponse.json({ success: false, error: 'Erro ao gerar link de recuperação.' }, { status: 500 });
     }
