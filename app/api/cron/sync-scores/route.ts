@@ -68,7 +68,8 @@ export async function GET(request: Request) {
 
     for (const date of Array.from(datesToQuery)) {
       totalApiRequests++;
-      const res = await fetch(`https://v3.football.api-sports.io/fixtures?league=1&season=2026&date=${date}`, {
+      // Removendo league e season para contornar o bloqueio do plano Free da API-Football
+      const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${date}`, {
         headers: {
           'x-apisports-key': apiFootballKey.replace(/\s+/g, '') // remove possible spaces
         }
@@ -80,7 +81,8 @@ export async function GET(request: Request) {
       }
 
       const data = await res.json();
-      const apiFixtures = data.response || [];
+      // Filtra os jogos apenas da Copa do Mundo (League ID 1) para evitar cruzar com outros campeonatos do dia
+      const apiFixtures = (data.response || []).filter((f: any) => f.league.id === 1);
 
       // Match pending matches of this date
       const matchesOfDay = pendingMatches.filter(m => new Date(m.match_date).toISOString().startsWith(date));
