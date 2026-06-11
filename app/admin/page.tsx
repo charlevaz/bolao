@@ -1594,14 +1594,15 @@ export default function AdminPanel() {
                       </div>
                       {match.status === 'pending' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          {isTimeLocked && (
-                            <span style={{ padding: '0.4rem 0.8rem', backgroundColor: '#64748b', color: '#fff', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem', cursor: 'help' }} title="Travado automaticamente para os usuários (menos de 1h do jogo)">
-                              ⏳ Tempo Esgotado
+                          {isTimeLocked ? (
+                            <span style={{ padding: '0.4rem 0.8rem', backgroundColor: '#64748b', color: '#fff', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem', cursor: 'not-allowed' }} title="Travado automaticamente por estar a menos de 1 hora do jogo">
+                              🔒 Tempo Esgotado
                             </span>
+                          ) : (
+                            <button onClick={() => handleToggleLock(match.id, match.is_locked)} style={{ padding: '0.4rem 0.8rem', backgroundColor: match.is_locked ? '#10b981' : '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem' }}>
+                              {match.is_locked ? '🔓 Liberar' : '🔒 Travar'}
+                            </button>
                           )}
-                          <button onClick={() => handleToggleLock(match.id, match.is_locked)} style={{ padding: '0.4rem 0.8rem', backgroundColor: match.is_locked ? '#10b981' : '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', marginRight: '0.5rem' }}>
-                            {match.is_locked ? '🔓 Liberar' : '🔒 Travar'}
-                          </button>
                           <input type="number" min="0" value={scores[match.id]?.a || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], a: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
                           <span>x</span>
                           <input type="number" min="0" value={scores[match.id]?.b || ''} onChange={e => setScores({ ...scores, [match.id]: { ...scores[match.id], b: e.target.value } })} style={{ width: '45px', padding: '0.4rem', textAlign: 'center', borderRadius: '4px', border: '1px solid #ccc' }} />
