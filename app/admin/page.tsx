@@ -121,6 +121,38 @@ export default function AdminPanel() {
     loadColabEmails();
   };
 
+  const handleResetPassword = async (userId: string, email: string) => {
+    const novaSenha = prompt(`Digite a nova senha para o usuário ${email} (Mínimo de 6 caracteres):`);
+    if (!novaSenha) return;
+    if (novaSenha.length < 6) {
+      alert('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    
+    if (!confirm(`Tem certeza que deseja alterar a senha de ${email}?`)) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ userId, newPassword: novaSenha })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
+
+      alert('Senha redefinida com sucesso!');
+    } catch (err: any) {
+      alert(`Erro: ${err.message}`);
+    }
+  };
+
   // ── Helper Pagination ───────────────────────────────────────────────────────
   const fetchAllRows = async (tableName: string, orderBy: string, ascending: boolean = false) => {
     let allData: any[] = [];
@@ -1240,6 +1272,9 @@ export default function AdminPanel() {
                     </select>
                     <button onClick={() => handleToggleAdmin(user.id, user.role)} style={{ padding: '0.4rem 0.8rem', backgroundColor: user.role === 'admin' ? '#ef4444' : '#2C67EA', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                       {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                    </button>
+                    <button onClick={() => handleResetPassword(user.id, user.email)} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#eab308', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      Redefinir Senha
                     </button>
                   </div>
                 </div>
