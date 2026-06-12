@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const bypassKey = url.searchParams.get('bypass');
     
-    const cronSecret = process.env.CRON_SECRET;
+    const cronSecret = process.env.CRON_PASS || process.env.CRON_SECRET;
     const isDevelopment = process.env.NODE_ENV === 'development';
     const isBypassAuthorized = !!(bypassKey && cronSecret && bypassKey === cronSecret);
 
