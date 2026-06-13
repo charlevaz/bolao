@@ -72,7 +72,8 @@ export async function GET(request: Request) {
       const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${date}`, {
         headers: {
           'x-apisports-key': apiFootballKey.replace(/\s+/g, '') // remove possible spaces
-        }
+        },
+        cache: 'no-store' // <--- EVITA CACHE DO NEXT.JS
       });
 
       if (!res.ok) {
