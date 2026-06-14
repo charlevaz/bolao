@@ -17,6 +17,21 @@ function toCsv(items: any[]) {
   return [header, ...rows].join('\n');
 }
 
+async function fetchAllRows(supabase: any, table: string) {
+  let allData: any[] = [];
+  let from = 0;
+  const step = 1000;
+  while (true) {
+    const { data, error } = await supabase.from(table).select('*').range(from, from + step - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allData = allData.concat(data);
+    if (data.length < step) break;
+    from += step;
+  }
+  return allData;
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -36,10 +51,10 @@ export async function GET(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 1. Extrair os dados
-    const { data: profiles } = await supabaseAdmin.from('profiles').select('*');
-    const { data: guesses } = await supabaseAdmin.from('guesses').select('*');
-    const { data: matches } = await supabaseAdmin.from('matches').select('*');
+    // 1. Extrair os dados quebrando o limite de 1000 do Supabase
+    const profiles = await fetchAllRows(supabaseAdmin, 'profiles');
+    const guesses = await fetchAllRows(supabaseAdmin, 'guesses');
+    const matches = await fetchAllRows(supabaseAdmin, 'matches');
 
     // 2. Converter para CSV
     const profilesCsv = toCsv(profiles || []);
