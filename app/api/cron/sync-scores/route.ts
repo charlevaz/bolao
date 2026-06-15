@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    console.log('[Sync Scores Cron] Job started');
+    console.log('[Sync Scores Cron] Job started (ESPN API)');
 
     const authHeader = request.headers.get('authorization');
     const url = new URL(request.url);
@@ -22,16 +22,9 @@ export async function GET(request: Request) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const apiFootballKey = process.env.API_FOOTBALL_KEY;
 
     if (!supabaseKey) {
       throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
-    }
-
-    if (!apiFootballKey) {
-      // The API_FOOTBALL_KEY had spaces in .env.local, maybe it's fixed or needs trimming
-      // We will try to get it, or fallback if it's missing (should throw error)
-      throw new Error('API_FOOTBALL_KEY is not configured');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -52,81 +45,97 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: 'No pending past matches', processed: 0 });
     }
 
-    // Determine unique dates needed to query API-Football
-    // API-Football expects local date (YYYY-MM-DD), but we can just use the date part of ISO
-    // The safest is to extract YYYY-MM-DD from the UTC match_date since API fixtures use UTC time
+    // Determine unique dates needed to query ESPN API
+    // ESPN API expects date as YYYYMMDD
     const datesToQuery = new Set<string>();
     pendingMatches.forEach(m => {
-      const d = new Date(m.match_date).toISOString().split('T')[0];
-      datesToQuery.add(d);
+      // Usar fuso de SP para a data do jogo e converter pra YYYYMMDD para a ESPN
+      const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
+      const espnDate = `${spDate[2]}${spDate[1]}${spDate[0]}`; // YYYYMMDD
+      datesToQuery.add(espnDate);
     });
 
-    console.log(`[Sync Scores Cron] Fetching API-Football for dates: ${Array.from(datesToQuery).join(', ')}`);
+    console.log(`[Sync Scores Cron] Fetching ESPN API for dates: ${Array.from(datesToQuery).join(', ')}`);
 
     const processedMatches = [];
     let totalApiRequests = 0;
     const apiErrors: any[] = [];
 
-    for (const date of Array.from(datesToQuery)) {
+    // Tabela de sinônimos (ESPN names vs DB names)
+    const aliasMap: Record<string, string> = {
+      "turkiye": "turkey",
+      "cote d'ivoire": "ivory coast",
+      "united states": "usa",
+      "bosnia-herzegovina": "bosnia & herzegovina",
+      "czechia": "czech republic"
+    };
+
+    const normalize = (str: string) => {
+      if (!str) return '';
+      let s = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      return aliasMap[s] || s;
+    };
+
+    for (const espnDate of Array.from(datesToQuery)) {
       totalApiRequests++;
-      // Removendo league e season para contornar o bloqueio do plano Free da API-Football
-      const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${date}`, {
-        headers: {
-          'x-apisports-key': apiFootballKey.replace(/\s+/g, '') // remove possible spaces
-        },
-        cache: 'no-store' // <--- EVITA CACHE DO NEXT.JS
+      
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${espnDate}`, {
+        cache: 'no-store'
       });
 
       if (!res.ok) {
-        console.error(`[Sync Scores Cron] API-Football error for date ${date}: ${res.statusText}`);
+        console.error(`[Sync Scores Cron] ESPN API error for date ${espnDate}: ${res.statusText}`);
         continue;
       }
 
       const data = await res.json();
-      
-      if (data.errors && Object.keys(data.errors).length > 0) {
-        apiErrors.push({ date, errors: data.errors });
-      }
+      const events = data.events || [];
 
-      // Filtra os jogos apenas da Copa do Mundo (League ID 1) para evitar cruzar com outros campeonatos do dia
-      const apiFixtures = (data.response || []).filter((f: any) => f.league.id === 1);
-
-      // Match pending matches of this date
-      const matchesOfDay = pendingMatches.filter(m => new Date(m.match_date).toISOString().startsWith(date));
+      // Filtra os jogos do DB que pertencem a essa data
+      const matchesOfDay = pendingMatches.filter(m => {
+         const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
+         const mDate = `${spDate[2]}${spDate[1]}${spDate[0]}`;
+         return mDate === espnDate;
+      });
 
       for (const dbMatch of matchesOfDay) {
-        // Normaliza removendo acentos e deixando minúsculo para comparar
-        const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         const dbA = normalize(dbMatch.team_a);
         const dbB = normalize(dbMatch.team_b);
 
-        const matchedFixture = apiFixtures.find((api: any) => {
-          const apiA = normalize(api.teams.home.name);
-          const apiB = normalize(api.teams.away.name);
+        const matchedEvent = events.find((e: any) => {
+          if (!e.competitions || e.competitions.length === 0) return false;
+          const comps = e.competitions[0].competitors;
+          const home = comps.find((c: any) => c.homeAway === 'home')?.team?.name;
+          const away = comps.find((c: any) => c.homeAway === 'away')?.team?.name;
+          
+          if (!home || !away) return false;
+
+          const apiA = normalize(home);
+          const apiB = normalize(away);
+
           return (apiA === dbA && apiB === dbB) || (apiA === dbB && apiB === dbA);
         });
 
-        if (matchedFixture) {
-          const statusShort = matchedFixture.fixture.status.short;
-          // FT = Full Time, AET = After Extra Time, PEN = Penalties
-          if (['FT', 'AET', 'PEN'].includes(statusShort)) {
-            // Get regular time + extra time score (API returns total goals in fulltime/extratime/penalty object)
-            // But usually the final match score for the guess points is the total goals of the match.
-            // If it goes to penalties, we usually count the score AFTER extra time, not including penalties.
-            // But API-Football provides "goals" which is the final total score (excluding penalty shootout goals).
-            
-            let scoreA = matchedFixture.goals.home;
-            let scoreB = matchedFixture.goals.away;
+        if (matchedEvent) {
+          const comp = matchedEvent.competitions[0];
+          const statusName = comp.status.type.name; // e.g. STATUS_FINAL
+          const statusShort = comp.status.type.shortDetail; // e.g. FT, PEN
 
-            // Se for do jeito que time B estava na casa e time A visitando na API
-            if (normalize(matchedFixture.teams.home.name) === dbB) {
-              scoreA = matchedFixture.goals.away;
-              scoreB = matchedFixture.goals.home;
+          if (statusName === 'STATUS_FINAL' || statusShort === 'FT' || statusShort === 'PEN' || statusShort === 'AET') {
+            const homeComp = comp.competitors.find((c: any) => c.homeAway === 'home');
+            const awayComp = comp.competitors.find((c: any) => c.homeAway === 'away');
+            
+            let scoreA = parseInt(homeComp.score, 10);
+            let scoreB = parseInt(awayComp.score, 10);
+
+            if (normalize(homeComp.team.name) === dbB) {
+              scoreA = parseInt(awayComp.score, 10);
+              scoreB = parseInt(homeComp.score, 10);
             }
 
             console.log(`[Sync Scores Cron] MATCH FINISHED: ${dbMatch.team_a} ${scoreA} x ${scoreB} ${dbMatch.team_b}`);
 
-            if (scoreA !== null && scoreB !== null) {
+            if (!isNaN(scoreA) && !isNaN(scoreB)) {
               // Finish the match in our DB!
               const { error: rpcErr } = await supabase.rpc('finish_match', {
                 p_match_id: dbMatch.id,
@@ -145,10 +154,10 @@ export async function GET(request: Request) {
               }
             }
           } else {
-            console.log(`[Sync Scores Cron] Match ${dbMatch.team_a} x ${dbMatch.team_b} is still ongoing/pending (status: ${statusShort})`);
+            console.log(`[Sync Scores Cron] Match ${dbMatch.team_a} x ${dbMatch.team_b} is still ongoing/pending (status: ${statusName})`);
           }
         } else {
-          console.warn(`[Sync Scores Cron] Could not map DB match ${dbMatch.team_a} x ${dbMatch.team_b} to API-Football`);
+          console.warn(`[Sync Scores Cron] Could not map DB match ${dbMatch.team_a} x ${dbMatch.team_b} to ESPN`);
         }
       }
     }
@@ -166,3 +175,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
