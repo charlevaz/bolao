@@ -140,7 +140,11 @@ export default function Dashboard() {
         });
         
         setUniqueDays(daysFormat);
-        if (daysFormat.length > 0) setSelectedDay(daysFormat[0].date);
+        if (daysFormat.length > 0) {
+          const todaySP = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
+          const todayOrFuture = daysFormat.find(d => d.date >= todaySP);
+          setSelectedDay(todayOrFuture ? todayOrFuture.date : daysFormat[0].date);
+        }
       }
 
       // Processar Palpites
