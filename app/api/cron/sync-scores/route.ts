@@ -65,6 +65,7 @@ export async function GET(request: Request) {
 
     const processedMatches = [];
     let totalApiRequests = 0;
+    const apiErrors: any[] = [];
 
     for (const date of Array.from(datesToQuery)) {
       totalApiRequests++;
@@ -82,6 +83,11 @@ export async function GET(request: Request) {
       }
 
       const data = await res.json();
+      
+      if (data.errors && Object.keys(data.errors).length > 0) {
+        apiErrors.push({ date, errors: data.errors });
+      }
+
       // Filtra os jogos apenas da Copa do Mundo (League ID 1) para evitar cruzar com outros campeonatos do dia
       const apiFixtures = (data.response || []).filter((f: any) => f.league.id === 1);
 
@@ -151,7 +157,8 @@ export async function GET(request: Request) {
       success: true, 
       processed: processedMatches.length, 
       apiRequests: totalApiRequests,
-      updatedMatches: processedMatches
+      updatedMatches: processedMatches,
+      apiErrors
     });
 
   } catch (error: any) {
