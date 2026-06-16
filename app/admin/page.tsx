@@ -715,7 +715,7 @@ export default function AdminPanel() {
     if (!profilesData) return;
     const statsMap: any = {};
     profilesData.forEach((p: any) => {
-      statsMap[p.id] = { id: p.id, name: p.name, email: p.email, user_group: p.user_group, points: 0, exact: 0, winner: 0, tie: 0, single_goal: 0, participations: 0 };
+      statsMap[p.id] = { id: p.id, name: p.name, email: p.email, user_group: p.user_group, eligible: p.eligible, points: 0, exact: 0, winner: 0, tie: 0, single_goal: 0, participations: 0 };
     });
     if (guessesData) {
       guessesData.forEach((g: any) => {
@@ -730,7 +730,9 @@ export default function AdminPanel() {
         } else if (g.points_earned === 1) statsMap[g.user_id].single_goal++;
       });
     }
-    const sorted = Object.values(statsMap).sort((a: any, b: any) => {
+    const sorted = Object.values(statsMap)
+      .filter((u: any) => u.eligible !== false)
+      .sort((a: any, b: any) => {
       if (b.points !== a.points) return b.points - a.points;
       if (b.exact !== a.exact) return b.exact - a.exact;
       if (b.winner !== a.winner) return b.winner - a.winner;
@@ -1155,7 +1157,7 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(theme.hasTwoPools ? ranking.filter(r => r.user_group === rankingFilter) : ranking).slice(0, 50).map((r, i) => (
+                  {(theme.hasTwoPools ? ranking.filter(r => r.user_group === rankingFilter) : ranking).filter(r => r.eligible !== false).slice(0, 50).map((r, i) => (
                     <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', backgroundColor: i < 3 ? '#fffbeb' : 'transparent' }}>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: i === 0 ? '#eab308' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#555' }}>
                         {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}
