@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { getTheme } from '@/utils/theme';
@@ -33,6 +33,19 @@ export default function Dashboard() {
 
   // Fases liberadas pelo admin
   const [phaseSettings, setPhaseSettings] = useState<Record<string, boolean>>({});
+
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
+
+  useEffect(() => {
+    if (uniqueDays.length > 0 && selectedDay && !initialScrollDone && carouselRef.current) {
+      const activeBtn = carouselRef.current.querySelector('[data-active="true"]');
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
+        setInitialScrollDone(true);
+      }
+    }
+  }, [uniqueDays, selectedDay, initialScrollDone]);
 
   const supabase = createClient();
   const theme = getTheme();
@@ -478,10 +491,11 @@ export default function Dashboard() {
           <section style={{ flex: '1 1 600px', minWidth: '300px' }}>
             
             {/* CARROSSEL DE DIAS */}
-            <div style={{ display: 'flex', overflowX: 'auto', gap: '0.5rem', paddingBottom: '1rem', marginBottom: '1rem', scrollbarWidth: 'thin' }}>
+            <div ref={carouselRef} style={{ display: 'flex', overflowX: 'auto', gap: '0.5rem', paddingBottom: '1rem', marginBottom: '1rem', scrollbarWidth: 'thin' }}>
               {uniqueDays.map((d) => (
                 <button 
                   key={d.date}
+                  data-active={selectedDay === d.date}
                   onClick={() => setSelectedDay(d.date)}
                   style={{ 
                     flexShrink: 0,
