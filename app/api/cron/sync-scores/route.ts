@@ -67,7 +67,8 @@ export async function GET(request: Request) {
       "cote d'ivoire": "ivory coast",
       "united states": "usa",
       "bosnia-herzegovina": "bosnia & herzegovina",
-      "czechia": "czech republic"
+      "czechia": "czech republic",
+      "congo dr": "dr congo"
     };
 
     const normalize = (str: string) => {
