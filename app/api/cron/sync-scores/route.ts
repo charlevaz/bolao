@@ -77,6 +77,15 @@ export async function GET(request: Request) {
       return aliasMap[s] || s;
     };
 
+    // Load team translations for knockout syncing
+    const { data: translations } = await supabase.from('team_translations').select('*');
+    const translationMap = new Map();
+    if (translations) {
+      translations.forEach(t => {
+        translationMap.set(normalize(t.api_name), { pt: t.pt_name, flag: t.flag_code });
+      });
+    }
+
     for (const espnDate of Array.from(datesToQuery)) {
       totalApiRequests++;
       
@@ -163,9 +172,82 @@ export async function GET(request: Request) {
       }
     }
 
+    // 2. Sync Knockout Teams (Future Matches)
+    const { data: upcomingKnockouts } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('status', 'pending')
+      .not('group_name', 'ilike', 'Group%');
+
+    let knockoutUpdates = 0;
+
+    if (upcomingKnockouts && upcomingKnockouts.length > 0) {
+      const knockoutDatesToQuery = new Set<string>();
+      upcomingKnockouts.forEach(m => {
+        const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
+        const espnDate = `${spDate[2]}${spDate[1]}${spDate[0]}`; // YYYYMMDD
+        knockoutDatesToQuery.add(espnDate);
+      });
+
+      console.log(`[Sync Scores Cron] Fetching ESPN API for knockout dates: ${Array.from(knockoutDatesToQuery).join(', ')}`);
+
+      for (const espnDate of Array.from(knockoutDatesToQuery)) {
+        totalApiRequests++;
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${espnDate}`, {
+          cache: 'no-store'
+        });
+
+        if (!res.ok) {
+          console.error(`[Sync Scores Cron] ESPN API error for knockout date ${espnDate}: ${res.statusText}`);
+          continue;
+        }
+
+        const data = await res.json();
+        const events = data.events || [];
+
+        const matchesOfDay = upcomingKnockouts.filter(m => {
+           const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
+           const mDate = `${spDate[2]}${spDate[1]}${spDate[0]}`;
+           return mDate === espnDate;
+        });
+
+        for (const dbMatch of matchesOfDay) {
+          const dbTime = new Date(dbMatch.match_date).getTime();
+          const matchedEvent = events.find((e: any) => new Date(e.date).getTime() === dbTime);
+
+          if (matchedEvent) {
+             const comp = matchedEvent.competitions[0];
+             const homeComp = comp.competitors.find((c: any) => c.homeAway === 'home');
+             const awayComp = comp.competitors.find((c: any) => c.homeAway === 'away');
+             
+             // Somente atualiza se ambos os times não forem mais "TBD" na ESPN
+             if (homeComp && awayComp && homeComp.team.displayName !== 'TBD' && awayComp.team.displayName !== 'TBD') {
+                const apiA = normalize(homeComp.team.name);
+                const apiB = normalize(awayComp.team.name);
+                
+                const trA = translationMap.get(apiA) || { pt: homeComp.team.name, flag: 'un' };
+                const trB = translationMap.get(apiB) || { pt: awayComp.team.name, flag: 'un' };
+
+                if (dbMatch.team_a !== trA.pt || dbMatch.team_b !== trB.pt) {
+                   console.log(`[Sync Scores Cron] Updating knockout match ${dbMatch.id} teams to ${trA.pt} vs ${trB.pt}`);
+                   await supabase.from('matches').update({
+                      team_a: trA.pt,
+                      team_b: trB.pt,
+                      flag_a: trA.flag,
+                      flag_b: trB.flag
+                   }).eq('id', dbMatch.id);
+                   knockoutUpdates++;
+                }
+             }
+          }
+        }
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
-      processed: processedMatches.length, 
+      processed: processedMatches.length,
+      knockoutUpdates,
       apiRequests: totalApiRequests,
       updatedMatches: processedMatches,
       apiErrors
