@@ -184,8 +184,10 @@ export async function GET(request: Request) {
     if (upcomingKnockouts && upcomingKnockouts.length > 0) {
       const knockoutDatesToQuery = new Set<string>();
       upcomingKnockouts.forEach(m => {
-        const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
-        const espnDate = `${spDate[2]}${spDate[1]}${spDate[0]}`; // YYYYMMDD
+        // Usa en-US explicitamente para garantir o formato MM/DD/YYYY
+        const spDateStr = new Date(m.match_date).toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+        const parts = spDateStr.split('/'); // [MM, DD, YYYY]
+        const espnDate = `${parts[2]}${parts[0]}${parts[1]}`; // YYYYMMDD
         knockoutDatesToQuery.add(espnDate);
       });
 
@@ -206,8 +208,9 @@ export async function GET(request: Request) {
         const events = data.events || [];
 
         const matchesOfDay = upcomingKnockouts.filter(m => {
-           const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
-           const mDate = `${spDate[2]}${spDate[1]}${spDate[0]}`;
+           const spDateStr = new Date(m.match_date).toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+           const parts = spDateStr.split('/');
+           const mDate = `${parts[2]}${parts[0]}${parts[1]}`;
            return mDate === espnDate;
         });
 
@@ -220,23 +223,27 @@ export async function GET(request: Request) {
              const homeComp = comp.competitors.find((c: any) => c.homeAway === 'home');
              const awayComp = comp.competitors.find((c: any) => c.homeAway === 'away');
              
-             // Somente atualiza se ambos os times não forem mais "TBD" na ESPN
              if (homeComp && awayComp && homeComp.team.displayName !== 'TBD' && awayComp.team.displayName !== 'TBD') {
                 const apiA = normalize(homeComp.team.name);
                 const apiB = normalize(awayComp.team.name);
                 
-                const trA = translationMap.get(apiA) || { pt: homeComp.team.name, flag: 'un' };
-                const trB = translationMap.get(apiB) || { pt: awayComp.team.name, flag: 'un' };
+                const trA = translationMap.get(apiA);
+                const trB = translationMap.get(apiB);
 
-                if (dbMatch.team_a !== trA.pt || dbMatch.team_b !== trB.pt) {
-                   console.log(`[Sync Scores Cron] Updating knockout match ${dbMatch.id} teams to ${trA.pt} vs ${trB.pt}`);
-                   await supabase.from('matches').update({
-                      team_a: trA.pt,
-                      team_b: trB.pt,
-                      flag_a: trA.flag,
-                      flag_b: trB.flag
-                   }).eq('id', dbMatch.id);
-                   knockoutUpdates++;
+                // Só atualiza se ambos os times estiverem no nosso dicionário (países reais, não placeholders como "Third Place...")
+                if (trA && trB) {
+                   if (dbMatch.team_a !== trA.pt || dbMatch.team_b !== trB.pt) {
+                      console.log(`[Sync Scores Cron] Updating knockout match ${dbMatch.id} teams to ${trA.pt} vs ${trB.pt}`);
+                      await supabase.from('matches').update({
+                         team_a: trA.pt,
+                         team_b: trB.pt,
+                         flag_a: trA.flag,
+                         flag_b: trB.flag
+                      }).eq('id', dbMatch.id);
+                      knockoutUpdates++;
+                   }
+                } else {
+                   console.log(`[Sync Scores Cron] Match ${dbMatch.id} teams not updated because ${apiA} or ${apiB} not found in translations.`);
                 }
              }
           }
