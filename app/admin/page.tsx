@@ -21,10 +21,10 @@ const TAB_LABELS: Record<Tab, string> = {
 
 const PHASES = [
   { key: 'group', label: 'Fase de Grupos' },
-  { key: 'round_of_32', label: 'Oitavas de Final' },
-  { key: 'round_of_16', label: 'Quartas de Final' },
-  { key: 'quarter', label: 'Semifinais' },
-  { key: 'semi', label: 'Final e 3º Lugar' },
+  { key: 'round_of_32', label: '16-avos de Final' },
+  { key: 'round_of_16', label: 'Oitavas de Final' },
+  { key: 'quarter', label: 'Quartas de Final' },
+  { key: 'semi', label: 'Semifinais (e 3º Lugar)' },
   { key: 'final', label: 'Grande Final' },
 ];
 

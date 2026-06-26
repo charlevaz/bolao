@@ -319,8 +319,8 @@ export default function Dashboard() {
     if (!groupName) return null;
     const g = groupName.toLowerCase();
     if (g.startsWith('group') || g.startsWith('grupo')) return null; // fase de grupos = sempre aberta
-    if (g.includes('round of 32') || g.includes('oitavas')) return 'round_of_32';
-    if (g.includes('round of 16')) return 'round_of_16';
+    if (g.includes('round of 32') || g.includes('16-avos') || g.includes('16 avos')) return 'round_of_32';
+    if (g.includes('round of 16') || g.includes('oitavas')) return 'round_of_16';
     if (g.includes('third place') || g.includes('terceiro')) return 'semi'; // 3º lugar abre junto com semi
     if (g.includes('semi')) return 'semi';
     if (g.includes('quarter') || g.includes('quartas')) return 'quarter';
