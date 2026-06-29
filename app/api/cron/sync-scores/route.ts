@@ -122,8 +122,14 @@ export async function GET(request: Request) {
 
           const apiA = normalize(home);
           const apiB = normalize(away);
+          
+          const trA = normalize(translationMap.get(apiA)?.pt);
+          const trB = normalize(translationMap.get(apiB)?.pt);
 
-          return (apiA === dbA && apiB === dbB) || (apiA === dbB && apiB === dbA);
+          const isMatch = (trA === dbA || apiA === dbA) && (trB === dbB || apiB === dbB);
+          const isReverseMatch = (trA === dbB || apiA === dbB) && (trB === dbA || apiB === dbA);
+
+          return isMatch || isReverseMatch;
         });
 
         if (matchedEvent) {
@@ -138,7 +144,11 @@ export async function GET(request: Request) {
             let scoreA = parseInt(homeComp.score, 10);
             let scoreB = parseInt(awayComp.score, 10);
 
-            if (normalize(homeComp.team.name) === dbB) {
+            const nHome = normalize(homeComp.team.name);
+            const trHome = normalize(translationMap.get(nHome)?.pt);
+            
+            // If the ESPN home team is actually DB's team B, we need to flip the scores
+            if (trHome === dbB || nHome === dbB) {
               scoreA = parseInt(awayComp.score, 10);
               scoreB = parseInt(homeComp.score, 10);
             }
