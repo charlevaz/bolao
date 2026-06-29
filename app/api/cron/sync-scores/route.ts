@@ -241,24 +241,27 @@ export async function GET(request: Request) {
            const homeComp = comp.competitors.find((c: any) => c.homeAway === 'home');
            const awayComp = comp.competitors.find((c: any) => c.homeAway === 'away');
            
-           if (homeComp && awayComp && homeComp.team.displayName !== 'TBD' && awayComp.team.displayName !== 'TBD') {
+           if (homeComp && awayComp) {
               const apiA = normalize(homeComp.team.name);
               const apiB = normalize(awayComp.team.name);
               
               const trA = translationMap.get(apiA);
               const trB = translationMap.get(apiB);
 
-              if (trA && trB) {
-                 if (dbMatch.team_a !== trA.pt || dbMatch.team_b !== trB.pt) {
-                    console.log(`[Sync Scores Cron] Updating knockout match ${dbMatch.id} teams to ${trA.pt} vs ${trB.pt}`);
-                    await supabase.from('matches').update({
-                       team_a: trA.pt,
-                       team_b: trB.pt,
-                       flag_a: trA.flag,
-                       flag_b: trB.flag
-                    }).eq('id', dbMatch.id);
-                    knockoutUpdates++;
-                 }
+              const newTeamA = trA ? trA.pt : dbMatch.team_a;
+              const newTeamB = trB ? trB.pt : dbMatch.team_b;
+              const newFlagA = trA ? trA.flag : dbMatch.flag_a;
+              const newFlagB = trB ? trB.flag : dbMatch.flag_b;
+
+              if (newTeamA !== dbMatch.team_a || newTeamB !== dbMatch.team_b) {
+                  console.log(`[Sync Scores Cron] Updating knockout match ${dbMatch.id} teams to ${newTeamA} vs ${newTeamB}`);
+                  await supabase.from('matches').update({
+                      team_a: newTeamA,
+                      team_b: newTeamB,
+                      flag_a: newFlagA,
+                      flag_b: newFlagB
+                  }).eq('id', dbMatch.id);
+                  knockoutUpdates++;
               }
            }
         }
