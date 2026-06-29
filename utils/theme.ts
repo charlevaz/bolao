@@ -35,6 +35,7 @@ export const getTheme = () => {
           'Será permitido apenas 1 palpite por jogo por Celular;',
           'Os palpites devem ser enviados antes do início da partida;',
           'Não será permitido alterar palpites após o fechamento;',
+          'No mata-mata, o placar válido é o resultado após a prorrogação (120 minutos). Gols de pênaltis não contam;',
           'Válido durante a Copa do Mundo.'
         ],
         footer: 'Ao final da Copa, os 5 clientes com maior pontuação no ranking geral serão premiados.',
@@ -82,6 +83,7 @@ export const getTheme = () => {
         'Os palpites devem ser enviados antes do início da partida;',
         'Não será permitido alterar palpites após o fechamento;',
         'Critérios de desempate: 1º Maior número de placares exatos; 2º Maior número de vencedores acertados; 3º Maior número de participações (palpites registrados).',
+        'No mata-mata, o placar válido é o resultado após a prorrogação (120 minutos). Gols de pênaltis não contam;',
         'Válido durante a copa (11 de Junho a 19 de Julho).'
       ],
       footer: 'Ao final da Copa, os 50 entregadores com maior pontuação no ranking geral serão premiados.',

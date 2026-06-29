@@ -89,6 +89,7 @@ export default async function RegrasColaborador() {
           <li>Os palpites devem ser enviados antes do início da partida;</li>
           <li>Não será permitido alterar palpites após o fechamento.</li>
           <li>Critérios de desempate: 1º Maior número de placares exatos; 2º Maior número de vencedores acertados; 3º Maior número de participações (palpites registrados).</li>
+          <li>No mata-mata, o placar válido é o resultado após a prorrogação (120 minutos). Gols de pênaltis não contam.</li>
           <li>A premiação será distribuída de forma fixa para os 6 primeiros colocados no ranking final.</li>
         </ul>
       </section>
