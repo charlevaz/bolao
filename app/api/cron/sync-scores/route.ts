@@ -40,24 +40,24 @@ export async function GET(request: Request) {
       throw new Error(`Error fetching DB matches: ${dbErr.message}`);
     }
 
+    const datesToQuery = new Set<string>();
+
     if (!pendingMatches || pendingMatches.length === 0) {
-      console.log('[Sync Scores Cron] No pending matches that have started. Exiting.');
-      return NextResponse.json({ success: true, message: 'No pending past matches', processed: 0 });
+      console.log('[Sync Scores Cron] No pending matches that have started. Skipping past sync.');
+    } else {
+      // Determine unique dates needed to query ESPN API
+      // ESPN API expects date as YYYYMMDD
+      pendingMatches.forEach(m => {
+        // Usa en-US explicitamente para garantir o formato MM/DD/YYYY
+        const spDate = new Date(m.match_date).toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/');
+        const espnDate = `${spDate[2]}${spDate[0]}${spDate[1]}`; // YYYYMMDD
+        datesToQuery.add(espnDate);
+      });
+
+      console.log(`[Sync Scores Cron] Fetching ESPN API for dates: ${Array.from(datesToQuery).join(', ')}`);
     }
 
-    // Determine unique dates needed to query ESPN API
-    // ESPN API expects date as YYYYMMDD
-    const datesToQuery = new Set<string>();
-    pendingMatches.forEach(m => {
-      // Usar fuso de SP para a data do jogo e converter pra YYYYMMDD para a ESPN
-      const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
-      const espnDate = `${spDate[2]}${spDate[1]}${spDate[0]}`; // YYYYMMDD
-      datesToQuery.add(espnDate);
-    });
-
-    console.log(`[Sync Scores Cron] Fetching ESPN API for dates: ${Array.from(datesToQuery).join(', ')}`);
-
-    const processedMatches = [];
+    const processedMatches: any[] = [];
     let totalApiRequests = 0;
     const apiErrors: any[] = [];
 
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
       const events = data.events || [];
 
       // Filtra os jogos do DB que pertencem a essa data
-      const matchesOfDay = pendingMatches.filter(m => {
+      const matchesOfDay = (pendingMatches || []).filter(m => {
          const spDate = new Date(m.match_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/');
          const mDate = `${spDate[2]}${spDate[1]}${spDate[0]}`;
          return mDate === espnDate;
