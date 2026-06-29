@@ -201,20 +201,26 @@ export async function GET(request: Request) {
 
       let allEvents: any[] = [];
       
-      for (const espnDate of Array.from(knockoutDatesToQuery)) {
-        totalApiRequests++;
+      const fetchPromises = Array.from(knockoutDatesToQuery).map(async (espnDate) => {
         try {
           const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${espnDate}`, {
             cache: 'no-store'
           });
           if (res.ok) {
             const data = await res.json();
-            if (data.events) allEvents = allEvents.concat(data.events);
+            return data.events || [];
           }
         } catch (err) {
           console.error(`[Sync Scores Cron] Error fetching ${espnDate}:`, err);
         }
-      }
+        return [];
+      });
+
+      const eventsArrays = await Promise.all(fetchPromises);
+      eventsArrays.forEach(events => {
+        allEvents = allEvents.concat(events);
+      });
+      totalApiRequests += fetchPromises.length;
 
       for (const dbMatch of upcomingKnockouts) {
         const dbTime = new Date(dbMatch.match_date).getTime();
@@ -251,9 +257,13 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      processed: processedMatches.length,
-      knockoutUpdates,
+      message: 'Scores synced successfully', 
+      matchesUpdated: processedMatches.length, 
       apiRequests: totalApiRequests,
+      knockoutUpdates,
+      debug: {
+        allEventsLength: upcomingKnockouts ? upcomingKnockouts.length : 0
+      },
       updatedMatches: processedMatches,
       apiErrors
     });
