@@ -134,10 +134,10 @@ export async function GET(request: Request) {
 
         if (matchedEvent) {
           const comp = matchedEvent.competitions[0];
-          const statusName = comp.status.type.name; // e.g. STATUS_FINAL
-          const statusShort = comp.status.type.shortDetail; // e.g. FT, PEN
+          const statusName = comp.status.type.name || ''; // e.g. STATUS_FINAL, STATUS_FINAL_PEN
+          const statusShort = comp.status.type.shortDetail || ''; // e.g. FT, FT-Pens, PEN
 
-          if (statusName === 'STATUS_FINAL' || statusShort === 'FT' || statusShort === 'PEN' || statusShort === 'AET') {
+          if (statusName.includes('FINAL') || statusShort.includes('FT') || statusShort.includes('PEN') || statusShort.includes('AET')) {
             const homeComp = comp.competitors.find((c: any) => c.homeAway === 'home');
             const awayComp = comp.competitors.find((c: any) => c.homeAway === 'away');
             
